@@ -1,5 +1,7 @@
 # Camunda Process Test for Node.js
 
+***THIS IS IN ACTIVE DEVELOPMENT AND NOT READY FOR USE YET***
+
 A comprehensive testing framework for Camunda process automation in Node.js/TypeScript, inspired by the Java `camunda-process-test-java` library.
 
 ## Features
