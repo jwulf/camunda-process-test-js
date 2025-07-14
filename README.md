@@ -120,15 +120,89 @@ class MyProcessTest {
 
 ## Configuration
 
-Configure the testing framework via environment variables or Jest configuration:
+Configure the testing framework via configuration file, environment variables, or Jest configuration.
+
+### Configuration File (Recommended)
+
+Create a `camunda-container-runtime.json` file in your project root to configure container images and runtime settings:
+
+```json
+{
+  "camundaVersion": "8.7.0",
+  "camundaDockerImageName": "camunda/camunda",
+  "camundaDockerImageVersion": "8.8.0-alpha5",
+  "connectorsDockerImageName": "camunda/connectors-bundle",
+  "connectorsDockerImageVersion": "8.8.0-alpha5",
+  "runtimeMode": "MANAGED"
+}
+```
+
+#### Configuration Properties
+
+| Property | Description | Default | Environment Variable |
+|----------|-------------|---------|---------------------|
+| `camundaVersion` | Camunda platform version | `SNAPSHOT` | `CAMUNDA_DOCKER_IMAGE_VERSION` |
+| `camundaDockerImageName` | Zeebe container image name | `camunda/camunda` | `CAMUNDA_DOCKER_IMAGE_NAME` |
+| `camundaDockerImageVersion` | Zeebe container image version | `SNAPSHOT` | `CAMUNDA_DOCKER_IMAGE_VERSION` |
+| `connectorsDockerImageName` | Connectors container image name | `camunda/connectors-bundle` | `CONNECTORS_DOCKER_IMAGE_NAME` |
+| `connectorsDockerImageVersion` | Connectors container image version | `SNAPSHOT` | `CONNECTORS_DOCKER_IMAGE_VERSION` |
+| `runtimeMode` | Runtime mode (`MANAGED` or `REMOTE`) | `MANAGED` | `CAMUNDA_RUNTIME_MODE` |
+
+#### Configuration Priority
+
+The framework uses the following priority order for configuration:
+1. **Environment variables** (highest priority)
+2. **Configuration file** (`camunda-container-runtime.json`)
+3. **Framework defaults** (lowest priority)
+
+#### Example Configurations
+
+**Production-ready setup:**
+```json
+{
+  "camundaDockerImageName": "camunda/camunda",
+  "camundaDockerImageVersion": "8.8.0-alpha5",
+  "connectorsDockerImageName": "camunda/connectors-bundle", 
+  "connectorsDockerImageVersion": "8.8.0-alpha5",
+  "runtimeMode": "MANAGED"
+}
+```
+
+**Development with specific versions:**
+```json
+{
+  "camundaDockerImageName": "camunda/camunda",
+  "camundaDockerImageVersion": "8.6.5",
+  "runtimeMode": "MANAGED"
+}
+```
+
+**Remote runtime (existing Camunda instance):**
+```json
+{
+  "runtimeMode": "REMOTE"
+}
+```
+
+### Environment Variables
+
+Override configuration file settings or set additional options:
 
 ```bash
-# Environment variables
-CAMUNDA_DOCKER_IMAGE_VERSION=8.7.0
+# Container configuration
+CAMUNDA_DOCKER_IMAGE_VERSION=8.8.0-alpha5
+CAMUNDA_DOCKER_IMAGE_NAME=camunda/camunda
+CONNECTORS_DOCKER_IMAGE_VERSION=8.8.0-alpha5
 CAMUNDA_RUNTIME_MODE=MANAGED  # or REMOTE
+
+# Runtime configuration  
 CAMUNDA_CONNECTORS_ENABLED=true
-DEBUG=camunda:test:*  # Enable debug logging
+
+# Debug settings
+DEBUG=camunda:*  # Enable debug logging
 ```
+
+### Jest Configuration
 
 Jest configuration in `jest.config.js`:
 
