@@ -1,9 +1,13 @@
 {
-  "name": "@camunda/process-test-node",
+  "name": "@camunda8/process-test",
   "version": "1.0.0",
   "description": "Node.js testing framework for Camunda process automation",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jwulf/camunda-process-test-js.git"
+  },
   "scripts": {
     "build": "tsc",
     "clean": "rm -rf dist",
@@ -11,7 +15,18 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "lint": "eslint source/**/*.ts",
-    "prepublishOnly": "npm run build"
+    "prepublishOnly": "npm run build",
+    "commit": "cz",
+    "prepare": "husky install",
+    "format": "prettier --write 'source/**/*.ts'",
+    "examples": "npm run build && npm test examples/",
+    "examples:simple": "npm run build && npm test examples/simple.test.ts",
+    "examples:debug": "npm run build && npm test examples/debug.test.ts",
+    "examples:basic": "npm run build && npm test examples/basic-test.test.ts",
+    "examples:simple:debug": "npm run build && DEBUG=camunda:* npm test examples/simple.test.ts",
+    "examples:debug:debug": "npm run build && DEBUG=camunda:* npm test examples/debug.test.ts",
+    "examples:basic:debug": "npm run build && DEBUG=camunda:* npm test examples/basic-test.test.ts",
+    "examples:all:debug": "npm run build && DEBUG=camunda:* npm test examples/"
   },
   "keywords": [
     "camunda",
@@ -30,17 +45,47 @@
     "testcontainers": "^10.2.0"
   },
   "devDependencies": {
+    "@commitlint/cli": "^19.8.1",
+    "@commitlint/config-conventional": "^19.8.1",
+    "@semantic-release/changelog": "^6.0.3",
+    "@semantic-release/git": "^10.0.1",
+    "@semantic-release/github": "^11.0.3",
+    "@semantic-release/npm": "^12.0.2",
     "@types/debug": "^4.1.12",
     "@types/jest": "^29.5.0",
     "@types/node": "^20.0.0",
     "@typescript-eslint/eslint-plugin": "^6.0.0",
     "@typescript-eslint/parser": "^6.0.0",
-    "eslint": "^8.44.0",
-    "jest": "^29.5.0",
+    "commitizen": "^4.3.1",
+    "cz-conventional-changelog": "^3.3.0",
+    "eslint": "^8.57.1",
+    "eslint-config-prettier": "^10.1.5",
+    "eslint-plugin-import": "^2.32.0",
+    "eslint-plugin-prettier": "^5.5.1",
+    "husky": "^9.1.7",
+    "jest": "^29.7.0",
+    "lint-staged": "^16.1.2",
+    "prettier": "^3.6.2",
+    "semantic-release": "^24.2.7",
     "ts-jest": "^29.1.0",
-    "typescript": "^5.1.0"
+    "typescript": "^5.8.3"
   },
   "peerDependencies": {
     "jest": ">=29.0.0"
+  },
+  "husky": {
+    "hooks": {
+      "pre-commit": "lint-staged"
+    }
+  },
+  "config": {
+    "commitizen": {
+      "path": "./node_modules/cz-conventional-changelog"
+    }
+  },
+  "lint-staged": {
+    "packages/**/*.ts": [
+      "prettier --write"
+    ]
   }
 }
