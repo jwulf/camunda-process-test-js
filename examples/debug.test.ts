@@ -1,49 +1,46 @@
 /**
  * Example showing how to run tests with verbose debugging information
- * 
+ *
  * This test demonstrates all the debug information available when running
  * Camunda Process Tests with debugging enabled.
  */
 
-import {
-  CamundaAssert,
-  setupCamundaProcessTest
-} from '../source';
+import { CamundaAssert, setupCamundaProcessTest } from '../source'
 
 // Function approach with debugging
-const setup = setupCamundaProcessTest();
+const setup = setupCamundaProcessTest()
 
 describe('Camunda Process Test - Debug Mode', () => {
-  test('should show verbose debug information during test execution', async () => {
-    const client = setup.getClient();
-    const context = setup.getContext();
+	test('should show verbose debug information during test execution', async () => {
+		const client = setup.getClient()
+		const context = setup.getContext()
 
-    // Deploy process - watch for deployment debug info
-    await context.deployProcess('./examples/resources/simple-process.bpmn');
+		// Deploy process - watch for deployment debug info
+		await context.deployProcess('./examples/resources/simple-process.bpmn')
 
-    // Start process instance - watch for client debug info
-    const zeebe = client.getCamundaRestClient();
-    const processInstance = await zeebe.createProcessInstance({
-      processDefinitionId: 'simple-process',
-      variables: { input: 'debug-test-data', debugMode: true }
-    });
+		// Start process instance - watch for client debug info
+		const zeebe = client.getCamundaRestClient()
+		const processInstance = await zeebe.createProcessInstance({
+			processDefinitionId: 'simple-process',
+			variables: { input: 'debug-test-data', debugMode: true },
+		})
 
-    // Create job worker - watch for worker debug info
-    const worker = await context.mockJobWorker('process-data')
-      .thenComplete({ 
-        output: 'processed-in-debug-mode',
-        timestamp: new Date().toISOString(),
-        debugInfo: 'Successfully processed with debugging enabled'
-      })
+		// Create job worker - watch for worker debug info
+		await context.mockJobWorker('process-data').thenComplete({
+			output: 'processed-in-debug-mode',
+			timestamp: new Date().toISOString(),
+			debugInfo: 'Successfully processed with debugging enabled',
+		})
 
+		// Basic assertion - watch for assertion debug info
+		const assertion = CamundaAssert.assertThat(processInstance)
+		await assertion.isCompleted()
 
-    // Basic assertion - watch for assertion debug info
-    const assertion = CamundaAssert.assertThat(processInstance);
-    await assertion.isCompleted();
-
-    console.log('🎉 Test completed! Check the debug output above for detailed information.');
-  }, 180000); // Extended timeout for first-time container pulls
-});
+		console.log(
+			'🎉 Test completed! Check the debug output above for detailed information.'
+		)
+	}, 180000) // Extended timeout for first-time container pulls
+})
 
 /* 
 🐛 DEBUG MODE INSTRUCTIONS:

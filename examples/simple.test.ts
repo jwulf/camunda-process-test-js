@@ -32,5 +32,5 @@ describe('Simple Camunda Process Test', () => {
     // Basic assertion
     const assertion = CamundaAssert.assertThat(processInstance);
     await assertion.isCompleted();
-  }, 30000); // 30 second timeout for container startup
+  }, 180000); // 3 minute timeout for container startup
 });
