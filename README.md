@@ -59,8 +59,8 @@ describe('Order Process', () => {
       .thenComplete({ tracking: 'TR123456' });
 
     // Start process instance
-    const zeebe = client.getCamundaRestClient();
-    const processInstance = await zeebe.createProcessInstance({
+    const camunda = client.getCamundaRestClient();
+    const processInstance = await camunda.createProcessInstance({
       processDefinitionId: 'order-process',
       variables: { orderId: 'order-123', amount: 99.99 }
     });
@@ -103,8 +103,8 @@ class MyProcessTest {
       .thenComplete({ tracking: 'TR123456' });
 
     // Start process instance
-    const zeebe = this.client.getCamundaRestClient();
-    const processInstance = await zeebe.createProcessInstance({
+    const camunda = this.client.getCamundaRestClient();
+    const processInstance = await camunda.createProcessInstance({
       processDefinitionId: 'order-process',
       variables: { orderId: 'order-123', amount: 99.99 }
     });
@@ -235,9 +235,9 @@ await context.deployDecision('./decisions/approval.dmn');
 
 ```typescript
 const client = setup.getClient();
-const zeebe = client.getCamundaRestClient();
+const camunda = client.getCamundaRestClient();
 
-const processInstance = await zeebe.createProcessInstance({
+const processInstance = await camunda.createProcessInstance({
   processDefinitionId: 'my-process',
   variables: { input: 'test-data' }
 });
@@ -365,7 +365,7 @@ DEBUG=camunda:test:logs npm test       # Container log capture
 
 When debugging is enabled, detailed container logs are saved to `./camunda-test-logs/`:
 - `elasticsearch-{timestamp}.log` - Elasticsearch startup and operation logs
-- `zeebe-{timestamp}.log` - Zeebe broker logs with BPMN processing details
+- `camunda-{timestamp}.log` - Camunda broker logs with BPMN processing details
 - `connectors-{timestamp}.log` - Connector runtime logs (if enabled)
 
 For detailed debugging instructions, see [DEBUG.md](DEBUG.md).
@@ -421,8 +421,8 @@ describe('Order Integration Test', () => {
       .thenComplete({ transactionId: 'tx-12345', status: 'success' });
 
     // Test the complete flow
-    const zeebe = client.getCamundaRestClient();
-    const orderInstance = await zeebe.createProcessInstance({
+    const camunda = client.getCamundaRestClient();
+    const orderInstance = await camunda.createProcessInstance({
       processDefinitionId: 'order-process',
       variables: { customerId: 'c123', amount: 599.99 }
     });
@@ -451,8 +451,8 @@ test('should handle payment failure', async () => {
   await context.mockJobWorker('payment-service')
     .thenThrowBpmnError('PAYMENT_FAILED', 'Insufficient funds');
 
-  const zeebe = client.getCamundaRestClient();
-  const processInstance = await zeebe.createProcessInstance({
+  const camunda = client.getCamundaRestClient();
+  const processInstance = await camunda.createProcessInstance({
     processDefinitionId: 'payment-process',
     variables: { amount: 1000000 } // Large amount
   });
@@ -474,8 +474,7 @@ test('should handle payment failure', async () => {
 ### Optimizations
 ```bash
 # Pre-pull images to speed up tests
-docker pull camunda/zeebe:8.7.0
-docker pull docker.elastic.co/elasticsearch/elasticsearch:8.11.0
+docker pull camunda/camunda:8.8.0
 
 # Clean up containers after testing
 docker container prune -f
@@ -507,7 +506,7 @@ npm test --testTimeout=300000
 **Solution**: Clean up existing containers
 ```bash
 # Stop all Camunda containers
-docker stop $(docker ps -q --filter ancestor=camunda/zeebe)
+docker stop $(docker ps -q --filter ancestor=camunda/camunda)
 
 # Or restart Docker Desktop
 ```

@@ -46,8 +46,7 @@ All examples use process definitions in the [`resources/`](resources/) directory
 
 ### Docker Images
 The framework automatically pulls these images on first run:
-- `camunda/zeebe:8.7.0` (Zeebe process engine)
-- `docker.elastic.co/elasticsearch/elasticsearch:8.11.0` (Required by Zeebe)
+- `camunda/camunda:8.7.0` (Camunda process engine)
 
 **Note**: First run takes 3-5 minutes for image downloads. Subsequent runs are much faster (~30-90 seconds).
 
@@ -205,8 +204,7 @@ npm run examples:basic
 ### Optimizations
 ```bash
 # Pre-pull images to speed up tests
-docker pull camunda/zeebe:8.7.0
-docker pull docker.elastic.co/elasticsearch/elasticsearch:8.11.0
+docker pull camunda/camunda:8.7.0
 
 # Clean up containers after testing
 docker container prune -f
@@ -216,7 +214,7 @@ docker container prune -f
 
 ### Common Issues
 
-#### 1. "manifest for camunda/zeebe:X.X.X not found"
+#### 1. "manifest for camunda/camunda:X.X.X not found"
 **Solution**: Check Docker image version in configuration
 ```bash
 # Use known working version
@@ -245,7 +243,7 @@ npm run build && npm test examples/simple.test.ts --testTimeout=300000
 **Solution**: Clean up existing containers
 ```bash
 # Stop all Camunda containers
-docker stop $(docker ps -q --filter ancestor=camunda/zeebe)
+docker stop $(docker ps -q --filter ancestor=camunda/camunda)
 
 # Or restart Docker Desktop
 ```
@@ -278,10 +276,9 @@ npm run examples:all:debug     # Full debug output for all examples
 
 ### Container Log Analysis
 When debugging is enabled, detailed container logs are saved to `./camunda-test-logs/`:
-- `elasticsearch-{timestamp}.log` - Elasticsearch startup and operation logs
-- `zeebe-{timestamp}.log` - Zeebe broker logs with BPMN processing details
-- `zeebe-startup-{timestamp}.log` - Initial Zeebe startup logs
-- `zeebe-timeout-{timestamp}.log` - Logs when Zeebe startup times out
+- `camunda-{timestamp}.log` - Camunda broker logs with BPMN processing details
+- `camunda-startup-{timestamp}.log` - Initial Camunda startup logs
+- `camunda-timeout-{timestamp}.log` - Logs when Camunda startup times out
 
 These logs contain:
 - Container startup sequences and timing
@@ -294,8 +291,8 @@ These logs contain:
 
 ### Client Usage
 ```typescript
-const zeebe = client.getCamundaRestClient();
-const processInstance = await zeebe.createProcessInstance({
+const camunda = client.getCamundaRestClient();
+const processInstance = await camunda.createProcessInstance({
   processDefinitionId: 'my-process',
   variables: { input: 'test' }
 });

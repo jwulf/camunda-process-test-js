@@ -49,10 +49,10 @@ export class CamundaProcessTestContext {
 	async deployProcess(resourcePath: string, processId?: string): Promise<void> {
 		debugDeploy('📋 Deploying BPMN process from: %s', resourcePath)
 
-		const zeebe = this.client.getCamundaRestClient()
+		const camunda = this.client.getCamundaRestClient()
 		debugDeploy('🚀 Sending deployment request...')
 
-		const response = await zeebe.deployResourcesFromFiles([resourcePath])
+		const response = await camunda.deployResourcesFromFiles([resourcePath])
 
 		if (processId) {
 			this.deployedProcesses.push(processId)
@@ -78,10 +78,10 @@ export class CamundaProcessTestContext {
 	async deployDecision(resourcePath: string): Promise<void> {
 		debugDeploy('📊 Deploying DMN decision from: %s', resourcePath)
 
-		const zeebe = this.client.getCamundaRestClient()
+		const camunda = this.client.getCamundaRestClient()
 		debugDeploy('🚀 Sending decision deployment request...')
 
-		const response = await zeebe.deployResourcesFromFiles([resourcePath])
+		const response = await camunda.deployResourcesFromFiles([resourcePath])
 
 		const deployment = response.decisions[0] ?? {}
 		debugDeploy('✅ Decision deployed successfully')

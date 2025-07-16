@@ -22,7 +22,7 @@ export class CamundaAssert {
 	public static readonly DEFAULT_ASSERTION_TIMEOUT = 10000
 
 	/** Default interval between assertion attempts */
-	public static readonly DEFAULT_ASSERTION_INTERVAL = 100
+	public static readonly DEFAULT_ASSERTION_INTERVAL = 500
 
 	/** Default element selector function */
 	public static readonly DEFAULT_ELEMENT_SELECTOR = ElementSelectors.byId

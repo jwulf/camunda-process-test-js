@@ -46,7 +46,7 @@ export interface CamundaRuntimeConfiguration {
 }
 
 export interface CamundaTestClient {
-	zeebe: Camunda8
+	camunda: Camunda8
 	processInstanceKey?: string
 }
 

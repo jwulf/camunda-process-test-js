@@ -100,12 +100,6 @@ export class CamundaProcessTestRuntime {
 			CAMUNDA_LOG_LEVEL: process.env.DEBUG ? 'debug' : 'none', // Enable Camunda logs in debug mode
 			CAMUNDA_AUTH_STRATEGY:
 				(process.env.CAMUNDA_AUTH_STRATEGY as 'NONE') || 'NONE',
-			CAMUNDA_SECURE_CONNECTION:
-				(process.env.CAMUNDA_SECURE_CONNECTION as unknown as false) || false,
-			zeebeGrpcSettings: {
-				ZEEBE_INSECURE_CONNECTION:
-					(process.env.ZEEBE_INSECURE_CONNECTION as unknown as true) || true,
-			},
 		})
 
 		log('✅ Camunda client created successfully')
@@ -219,8 +213,8 @@ export class CamundaProcessTestRuntime {
 			const containerToCapture = this.container || tempContainer
 			if (containerToCapture && process.env.DEBUG?.includes('camunda')) {
 				const logPrefix = isTimeoutError
-					? 'zeebe-timeout'
-					: 'zeebe-startup-failed'
+					? 'camunda-timeout'
+					: 'camunda-startup-failed'
 				log('📋 Attempting to capture logs from container...')
 				try {
 					await this.captureFailedContainerLogs(containerToCapture, logPrefix)
@@ -247,15 +241,15 @@ export class CamundaProcessTestRuntime {
 			throw new Error('Zeebe container must be started before connectors')
 		}
 
-		const zeebeGatewayPort = this.container.getMappedPort(26500)
+		const camundaGatewayPort = this.container.getMappedPort(26500)
 		const image = `${this.config.connectorsDockerImageName}:${this.config.connectorsDockerImageVersion}`
 
 		log('🔌 Starting Connectors container...')
 		log('📥 Pulling image: %s', image)
-		log('🔗 Connecting to Zeebe gateway on port %d', zeebeGatewayPort)
+		log('🔗 Connecting to Camunda gateway on port %d', camundaGatewayPort)
 
 		const environment = {
-			'ZEEBE_CLIENT_BROKER_GATEWAY-ADDRESS': `host.docker.internal:${zeebeGatewayPort}`,
+			'ZEEBE_CLIENT_BROKER_GATEWAY-ADDRESS': `host.docker.internal:${camundaGatewayPort}`,
 			ZEEBE_CLIENT_SECURITY_PLAINTEXT: 'true',
 			...this.config.connectorsEnvVars,
 			...this.config.connectorsSecrets,
