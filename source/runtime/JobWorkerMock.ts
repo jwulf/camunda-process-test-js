@@ -99,8 +99,8 @@ export class JobWorkerMock {
 
 		let handlerIndex = 0
 
-		const zeebe = this.client.getCamundaRestClient()
-		this.worker = zeebe.createJobWorker({
+		const camunda = this.client.getCamundaRestClient()
+		this.worker = camunda.createJobWorker({
 			type: this.jobType,
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 			jobHandler: async (job: any) => {
@@ -123,6 +123,10 @@ export class JobWorkerMock {
 					}
 					await handler(job, complete)
 					handlerIndex++
+					this.finish?.() //Resolve the mock worker promise
+					debug(
+						`Job ${job.jobKey} of type ${this.jobType} processed successfully`
+					)
 					return 'JOB_ACTION_ACKNOWLEDGEMENT' as const
 				} catch (error) {
 					debug(`Error in job handler for ${this.jobType}:`, error)

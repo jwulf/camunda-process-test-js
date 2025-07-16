@@ -18,23 +18,47 @@ export abstract class BaseAssert {
 
 	/**
 	 * Waits until a condition is met or timeout is reached.
+	 * Uses exponential backoff to reduce API pressure.
+	 * Accounts for operation duration to prevent overlapping calls.
 	 */
 	protected async waitUntil(
 		condition: () => Promise<boolean> | boolean,
 		description: string
 	): Promise<void> {
 		const startTime = Date.now()
+		let currentInterval = this.interval
+		let consecutiveErrors = 0
 
 		while (Date.now() - startTime < this.timeout) {
+			const operationStartTime = Date.now()
+
 			try {
 				if (await condition()) {
 					return
 				}
+				// Reset error count on successful condition check
+				consecutiveErrors = 0
+				currentInterval = this.interval
 			} catch (error) {
-				// Continue polling on errors
+				consecutiveErrors++
+				// Exponential backoff on consecutive errors (max 5 seconds)
+				currentInterval = Math.min(
+					this.interval * Math.pow(2, consecutiveErrors),
+					5000
+				)
 			}
 
-			await this.sleep(this.interval)
+			// Calculate how long the operation took
+			const operationDuration = Date.now() - operationStartTime
+
+			// Only sleep if we have time remaining in the interval
+			// This prevents overlapping calls and maintains consistent polling frequency
+			const remainingInterval = Math.max(0, currentInterval - operationDuration)
+
+			if (remainingInterval > 0) {
+				await this.sleep(remainingInterval)
+			}
+			// If operation took longer than interval, we proceed immediately to next check
 		}
 
 		throw new Error(

@@ -19,8 +19,8 @@ describe('Camunda Process Test - Debug Mode', () => {
 		await context.deployProcess('./examples/resources/simple-process.bpmn')
 
 		// Start process instance - watch for client debug info
-		const zeebe = client.getCamundaRestClient()
-		const processInstance = await zeebe.createProcessInstance({
+		const camunda = client.getCamundaRestClient()
+		const processInstance = await camunda.createProcessInstance({
 			processDefinitionId: 'simple-process',
 			variables: { input: 'debug-test-data', debugMode: true },
 		})
@@ -86,7 +86,7 @@ To run this test with full debugging information, use:
 📋 CONTAINER LOGS:
 When debug mode is enabled, container logs are automatically captured to:
 - ./camunda-test-logs/elasticsearch-{timestamp}.log
-- ./camunda-test-logs/zeebe-{timestamp}.log  
+- ./camunda-test-logs/camunda-{timestamp}.log  
 - ./camunda-test-logs/connectors-{timestamp}.log (if connectors enabled)
 
 💡 TIP: The first run takes longer due to Docker image downloads.
