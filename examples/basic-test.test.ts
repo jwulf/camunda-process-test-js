@@ -141,9 +141,9 @@ class MyProcessTest {
 		await this.context.deployProcess('examples/resources/timer-process.bpmn')
 
 		// Start process instance
-		const camunda = this.client.getZeebeGrpcApiClient()
+		const camunda = this.client.getCamundaRestClient()
 		const processInstance = await camunda.createProcessInstance({
-			bpmnProcessId: 'timer-process',
+			processDefinitionId: 'timer-process',
 			variables: {},
 		})
 

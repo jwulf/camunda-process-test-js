@@ -86,8 +86,8 @@ export class CamundaProcessTestContext {
 		const deployment = response.decisions[0] ?? {}
 		debugDeploy('✅ Decision deployed successfully')
 		debugDeploy('📍 Decision Key: %s', deployment.decisionKey)
-		debugDeploy('📍 Decision ID: %s', deployment.dmnDecisionId)
-		debugDeploy('📍 Decision Name: %s', deployment.dmnDecisionName)
+		debugDeploy('📍 Decision ID: %s', deployment.decisionDefinitionId)
+		debugDeploy('📍 Decision Name: %s', deployment.name)
 		debugDeploy('📍 Version: %d', deployment.version)
 	}
 

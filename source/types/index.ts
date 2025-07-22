@@ -3,7 +3,7 @@ import { Camunda8 } from '@camunda8/sdk'
 export interface ProcessInstanceEvent {
 	processInstanceKey: string
 	processDefinitionKey: string
-	version: number
+	version?: number
 }
 
 export interface ProcessInstanceResult extends ProcessInstanceEvent {

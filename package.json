@@ -39,7 +39,7 @@
   "author": "Camunda",
   "license": "Apache-2.0",
   "dependencies": {
-    "@camunda8/sdk": "^8.7.18",
+    "@camunda8/sdk": "^8.7.22",
     "await-timeout": "^1.1.1",
     "debug": "^4.3.4",
     "testcontainers": "^10.2.0"

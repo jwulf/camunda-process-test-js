@@ -135,32 +135,183 @@ export class DecisionInstanceAssert extends BaseAssert {
 
 	// ======== Helper methods ========
 
+	/**
+	 * Retrieves a decision instance based on the selector type.
+	 * Uses the CamundaRestClient to query actual decision instances from Camunda 8.8+ API.
+	 *
+	 * @returns Promise resolving to the decision instance data or null if not found
+	 * @private
+	 */
 	private async getDecisionInstance(): Promise<any> {
-		// Mock implementation - would query actual decision instances from Zeebe/Operate API
-		if (this.selector.type === 'key') {
-			return {
-				key: this.selector.value,
-				decisionId: 'test-decision',
-				decisionName: 'Test Decision',
-				state: 'EVALUATED',
-				result: { output: 'approved' },
-				input: { amount: 1000 },
-				processInstanceKey: '12345',
+		// Use CamundaRestClient to query actual decision instances from Camunda 8.8+ API
+		try {
+			if (this.selector.type === 'key') {
+				// Direct lookup by decision instance key
+				const decisionInstance = await this.client.getDecisionInstance(
+					this.selector.value as string
+				)
+				return this.transformDecisionInstanceResponse(decisionInstance)
 			}
+
+			if (this.selector.type === 'decisionId') {
+				// Search by decision definition ID
+				const searchResult = await this.client.searchDecisionInstances({
+					filter: {
+						decisionDefinitionId: this.selector.value as string,
+					},
+					sort: [{ field: 'evaluationDate', order: 'DESC' }],
+					page: { from: 0, limit: 1 },
+				})
+
+				if (searchResult.items.length === 0) {
+					return null
+				}
+
+				// Get the full decision instance details
+				const decisionInstance = await this.client.getDecisionInstance(
+					searchResult.items[0].decisionInstanceKey
+				)
+				return this.transformDecisionInstanceResponse(decisionInstance)
+			}
+
+			if (this.selector.type === 'processInstanceKey') {
+				// Search by process instance key
+				const searchResult = await this.client.searchDecisionInstances({
+					filter: {
+						processInstanceKey: this.selector.value as string,
+					},
+					sort: [{ field: 'evaluationDate', order: 'DESC' }],
+					page: { from: 0, limit: 1 },
+				})
+
+				if (searchResult.items.length === 0) {
+					return null
+				}
+
+				// Get the full decision instance details
+				const decisionInstance = await this.client.getDecisionInstance(
+					searchResult.items[0].decisionInstanceKey
+				)
+				return this.transformDecisionInstanceResponse(decisionInstance)
+			}
+
+			if (this.selector.type === 'custom') {
+				// Search all decision instances and apply custom predicate
+				const searchResult = await this.client.searchDecisionInstances({
+					filter: {},
+					sort: [{ field: 'evaluationDate', order: 'DESC' }],
+					page: { from: 0, limit: 100 }, // Reasonable limit for custom search
+				})
+
+				// Apply custom predicate function
+				const predicate = this.selector.value as (decision: any) => boolean
+				const matchingItem = searchResult.items.find((item) => {
+					const transformedItem =
+						this.transformDecisionInstanceSearchResult(item)
+					return predicate(transformedItem)
+				})
+
+				if (!matchingItem) {
+					return null
+				}
+
+				// Get the full decision instance details
+				const decisionInstance = await this.client.getDecisionInstance(
+					matchingItem.decisionInstanceKey
+				)
+				return this.transformDecisionInstanceResponse(decisionInstance)
+			}
+
+			return null
+		} catch (error) {
+			// Return null for not found errors, re-throw other errors
+			if (error instanceof Error && error.message.includes('404')) {
+				return null
+			}
+			throw error
+		}
+	}
+
+	/**
+	 * Transform the GetDecisionInstanceResponse to match the expected interface.
+	 * Handles JSON parsing of result field and maps API response fields to the internal format.
+	 *
+	 * @param response - The response from CamundaRestClient.getDecisionInstance()
+	 * @returns Transformed decision instance object or null if response is empty
+	 * @private
+	 */
+	private transformDecisionInstanceResponse(response: any): any {
+		if (!response) {
+			return null
 		}
 
-		if (this.selector.type === 'decisionId') {
-			return {
-				key: 'decision-instance-key',
-				decisionId: this.selector.value,
-				decisionName: 'Test Decision',
-				state: 'EVALUATED',
-				result: { output: 'approved' },
-				input: { amount: 1000 },
+		// Parse the result JSON if it's a string
+		let parsedResult = response.result
+		try {
+			if (typeof response.result === 'string') {
+				parsedResult = JSON.parse(response.result)
 			}
+		} catch {
+			// Keep as string if parsing fails
+			parsedResult = response.result
 		}
 
-		return null
+		return {
+			key: response.decisionInstanceKey,
+			decisionId: response.decisionDefinitionId,
+			decisionName: response.decisionDefinitionName,
+			decisionVersion: response.decisionDefinitionVersion,
+			decisionType: response.decisionDefinitionType,
+			state: response.state,
+			result: parsedResult,
+			input: response.input || {},
+			processInstanceKey: response.processInstanceKey,
+			processDefinitionKey: response.processDefinitionKey,
+			evaluationDate: response.evaluationDate,
+			evaluationFailure: response.evaluationFailure,
+			tenantId: response.tenantId,
+		}
+	}
+
+	/**
+	 * Transform search result items to match the expected interface.
+	 * Used for processing items from searchDecisionInstances response.
+	 *
+	 * @param item - An item from the CamundaRestClient.searchDecisionInstances() response
+	 * @returns Transformed decision instance object or null if item is empty
+	 * @private
+	 */
+	private transformDecisionInstanceSearchResult(item: any): any {
+		if (!item) {
+			return null
+		}
+
+		// Parse the result JSON if it's a string
+		let parsedResult = item.result
+		try {
+			if (typeof item.result === 'string') {
+				parsedResult = JSON.parse(item.result)
+			}
+		} catch {
+			// Keep as string if parsing fails
+			parsedResult = item.result
+		}
+
+		return {
+			key: item.decisionInstanceKey,
+			decisionId: item.decisionDefinitionId,
+			decisionName: item.decisionDefinitionName,
+			decisionVersion: item.decisionDefinitionVersion,
+			decisionType: item.decisionType,
+			state: item.state,
+			result: parsedResult,
+			input: item.input || {},
+			processInstanceKey: item.processInstanceKey,
+			processDefinitionKey: item.processDefinitionKey,
+			evaluationDate: item.evaluationDate,
+			evaluationFailure: item.evaluationFailure,
+			tenantId: item.tenantId,
+		}
 	}
 
 	private deepEqual(obj1: any, obj2: any): boolean {
