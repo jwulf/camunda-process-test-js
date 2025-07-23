@@ -12,7 +12,7 @@ describe('CamundaRuntimeConfigurationMap', () => {
 		it('should have all required properties for each configuration', () => {
 			const configs = getAllConfigurationProperties()
 
-			Object.entries(configs).forEach(([key, config]) => {
+			Object.entries(configs).forEach(([, config]) => {
 				expect(config).toBeDefined()
 				expect(config.jsonKey).toBeDefined()
 				expect(config.envKey).toBeDefined()
@@ -39,7 +39,7 @@ describe('CamundaRuntimeConfigurationMap', () => {
 		})
 
 		it('should have proper environment variable naming', () => {
-			Object.entries(CAMUNDA_RUNTIME_CONFIGURATION).forEach(([key, config]) => {
+			Object.entries(CAMUNDA_RUNTIME_CONFIGURATION).forEach(([, config]) => {
 				expect(config.envKey).toMatch(/^[A-Z_]+$/)
 				expect(config.envKey.length).toBeGreaterThan(3)
 			})
