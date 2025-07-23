@@ -97,7 +97,7 @@ export class CamundaProcessTestRuntime {
 			ZEEBE_REST_ADDRESS: this.gatewayAddress.startsWith('http')
 				? this.gatewayAddress
 				: `http://${this.gatewayAddress}`,
-			CAMUNDA_LOG_LEVEL: process.env.DEBUG ? 'debug' : 'none', // Enable Camunda logs in debug mode
+			CAMUNDA_LOG_LEVEL: (process.env.CAMUNDA_LOG_LEVEL as 'none') ?? 'none', // Disable Camunda logs by default
 			CAMUNDA_AUTH_STRATEGY:
 				(process.env.CAMUNDA_AUTH_STRATEGY as 'NONE') || 'NONE',
 		})
