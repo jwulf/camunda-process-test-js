@@ -1,3 +1,7 @@
+import { Camunda8 } from '@camunda8/sdk'
+
+import { CamundaProcessTestContext } from '../runtime/CamundaProcessTestContext'
+
 import { CamundaProcessTestExtension } from './CamundaProcessTestExtension'
 
 /**
@@ -41,9 +45,8 @@ export function CamundaProcessTest<T extends { new (...args: any[]): {} }>(
 	// Inject client and context for the test methods
 	// This will be set during beforeAll, but we need to defer it
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	let client: any
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	let context: any
+	let client: Camunda8
+	let context: CamundaProcessTestContext
 
 	// Set up Jest lifecycle hooks immediately at module evaluation time
 	beforeAll(async () => {

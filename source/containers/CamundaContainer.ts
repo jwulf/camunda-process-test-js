@@ -120,13 +120,19 @@ export class CamundaContainer extends GenericContainer {
 	}
 
 	private static isPartitionReady(response: string) {
+		const hasPartitionIdCompact = response.includes('"partitionId":1')
+		const hasPartitionIdSpaced = response.includes('"partitionId": 1')
+		const hasLeaderRoleCompact = response.includes('"role":"leader"')
+		const hasLeaderRoleSpaced = response.includes('"role": "leader"')
+		const hasHealthyStatusCompact = response.includes('"health":"healthy"')
+		const hasHealthyStatusSpaced = response.includes('"health": "healthy"')
+
+		const hasLeaderRole = hasLeaderRoleCompact || hasLeaderRoleSpaced
+		const hasHealthyStatus = hasHealthyStatusCompact || hasHealthyStatusSpaced
+
 		return (
-			response.includes('"partitionId":1') ||
-			(response.includes('"partitionId": 1') &&
-				(response.includes('"role":"leader"') ||
-					response.includes('"role": "leader"')) &&
-				(response.includes('"health":"healthy"') ||
-					response.includes('"health": "healthy"')))
+			hasPartitionIdCompact ||
+			(hasPartitionIdSpaced && hasLeaderRole && hasHealthyStatus)
 		)
 	}
 

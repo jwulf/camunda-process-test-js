@@ -4,6 +4,47 @@ import { DecisionSelector } from '../types'
 
 import { BaseAssert } from './BaseAssert'
 
+// Decision result and input types - generic to handle various decision output types
+type DecisionResult = unknown
+type DecisionInput = Record<string, unknown>
+
+// API response interfaces for CamundaRestClient methods
+interface SearchDecisionInstanceItem {
+	decisionInstanceId: string
+	decisionInstanceKey: string
+	decisionDefinitionId: string
+	decisionDefinitionName: string
+	decisionDefinitionVersion: number
+	decisionType: string
+	state: string
+	result: string | DecisionResult
+	input?: string | DecisionInput // Make input optional as it might not be present in all responses
+	processInstanceKey: string
+	processDefinitionKey: string
+	evaluationDate: string
+	evaluationFailure?: string
+	tenantId: string
+}
+
+interface GetDecisionInstanceResponse {
+	decisionInstanceKey: string
+	decisionDefinitionId: string
+	decisionDefinitionName: string
+	decisionDefinitionVersion: number
+	decisionDefinitionType: string
+	state: string
+	result: string | DecisionResult
+	evaluatedInputs?: Array<{
+		inputName: string
+		inputValue: string
+	}>
+	processInstanceKey: string
+	processDefinitionKey: string
+	evaluationDate: string
+	evaluationFailure?: string
+	tenantId: string
+}
+
 // Internal transformed decision instance type
 interface TransformedDecisionInstance {
 	key: string
@@ -12,8 +53,8 @@ interface TransformedDecisionInstance {
 	decisionVersion: number
 	decisionType: string
 	state: string
-	result: any
-	input: any
+	result: DecisionResult
+	input: DecisionInput
 	processInstanceKey: string
 	processDefinitionKey: string
 	evaluationDate: string
@@ -76,7 +117,7 @@ export class DecisionInstanceAssert extends BaseAssert {
 			async () => {
 				const decision = await this.getDecisionInstance()
 				// eslint-disable-next-line @typescript-eslint/no-explicit-any
-				return this.deepEqual((decision as any)?.result, expectedResult)
+				return this.deepEqual(decision?.result, expectedResult)
 			},
 			`Decision to have result: ${JSON.stringify(expectedResult)}`
 		)
@@ -96,9 +137,10 @@ export class DecisionInstanceAssert extends BaseAssert {
 					return false
 				}
 
-				return Object.entries(expectedPartialResult).every(
-					([key, value]) => (decision.result as any)[key] === value
-				)
+				return Object.entries(expectedPartialResult).every(([key, value]) => {
+					const result = decision.result as Record<string, unknown>
+					return result[key] === value
+				})
 			},
 			`Decision result to contain: ${JSON.stringify(expectedPartialResult)}`
 		)
@@ -287,7 +329,7 @@ export class DecisionInstanceAssert extends BaseAssert {
 				const matchingItem = searchResult.items.find((item) => {
 					const transformedItem =
 						this.transformDecisionInstanceSearchResult(item)
-					return predicate(transformedItem)
+					return transformedItem && predicate(transformedItem)
 				})
 
 				if (!matchingItem) {
@@ -421,7 +463,7 @@ export class DecisionInstanceAssert extends BaseAssert {
 				const matchingItem = searchResult.items.find((item) => {
 					const transformedItem =
 						this.transformDecisionInstanceSearchResult(item)
-					return predicate(transformedItem)
+					return transformedItem && predicate(transformedItem)
 				})
 
 				if (!matchingItem) {
@@ -452,14 +494,14 @@ export class DecisionInstanceAssert extends BaseAssert {
 	 * @private
 	 */
 	private transformDecisionInstanceResponse(
-		response: any
+		response: GetDecisionInstanceResponse
 	): TransformedDecisionInstance | null {
 		if (!response) {
 			return null
 		}
 
 		// Parse the result JSON if it's a string
-		let parsedResult = response.result
+		let parsedResult: DecisionResult = response.result
 		try {
 			if (typeof response.result === 'string') {
 				parsedResult = JSON.parse(response.result)
@@ -470,15 +512,18 @@ export class DecisionInstanceAssert extends BaseAssert {
 		}
 
 		// Transform evaluatedInputs array into a key-value object
-		let transformedInput = {}
+		let transformedInput: DecisionInput = {}
 		if (response.evaluatedInputs && Array.isArray(response.evaluatedInputs)) {
 			transformedInput = response.evaluatedInputs.reduce(
-				(acc: any, input: any) => {
+				(
+					acc: Record<string, unknown>,
+					input: { inputName: string; inputValue: string }
+				) => {
 					// Use inputName as key (lowercase for consistency)
 					const key = input.inputName.toLowerCase()
 
 					// Parse inputValue - it might be JSON-escaped or a plain value
-					let parsedValue = input.inputValue
+					let parsedValue: unknown = input.inputValue
 					try {
 						// Try to parse as JSON first (handles escaped strings and numbers)
 						parsedValue = JSON.parse(input.inputValue)
@@ -526,13 +571,15 @@ export class DecisionInstanceAssert extends BaseAssert {
 	 * @returns Transformed decision instance object or null if item is empty
 	 * @private
 	 */
-	private transformDecisionInstanceSearchResult(item: any): any {
+	private transformDecisionInstanceSearchResult(
+		item: SearchDecisionInstanceItem
+	): TransformedDecisionInstance | null {
 		if (!item) {
 			return null
 		}
 
 		// Parse the result JSON if it's a string
-		let parsedResult = item.result
+		let parsedResult: DecisionResult = item.result
 		try {
 			if (typeof item.result === 'string') {
 				parsedResult = JSON.parse(item.result)
@@ -543,14 +590,16 @@ export class DecisionInstanceAssert extends BaseAssert {
 		}
 
 		// Parse the input JSON if it's a string
-		let parsedInput = item.input
+		let parsedInput: DecisionInput = {}
 		try {
 			if (typeof item.input === 'string') {
 				parsedInput = JSON.parse(item.input)
+			} else if (item.input && typeof item.input === 'object') {
+				parsedInput = item.input as DecisionInput
 			}
 		} catch {
 			// Keep as string if parsing fails, default to empty object
-			parsedInput = item.input || {}
+			parsedInput = (item.input as DecisionInput) || {}
 		}
 
 		return {
@@ -570,7 +619,7 @@ export class DecisionInstanceAssert extends BaseAssert {
 		}
 	}
 
-	private deepEqual(obj1: any, obj2: any): boolean {
+	private deepEqual(obj1: unknown, obj2: unknown): boolean {
 		if (obj1 === obj2) return true
 
 		if (obj1 == null || obj2 == null) return false
@@ -596,7 +645,7 @@ export class DecisionInstanceAssert extends BaseAssert {
 	 * Checks if the actual input contains all the key-value pairs from expected input.
 	 * This allows for partial matching where expected input can be a subset of actual input.
 	 */
-	private containsInput(actualInput: any, expectedInput: any): boolean {
+	private containsInput(actualInput: unknown, expectedInput: unknown): boolean {
 		if (!actualInput || !expectedInput) return false
 
 		if (typeof expectedInput !== 'object') {
