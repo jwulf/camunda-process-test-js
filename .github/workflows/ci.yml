@@ -92,6 +92,8 @@ jobs:
   # Semantic release (only on main branch)
   release:
     runs-on: ubuntu-latest
+    environment:
+      name: Publish
     needs: [code-quality, integration-tests]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     steps:
