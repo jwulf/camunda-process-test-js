@@ -10,7 +10,7 @@ A comprehensive testing framework for Camunda process automation in Node.js/Type
 - 🐳 **Container Management**: Automatic Camunda/Zeebe container lifecycle management using TestContainers
 - 🔍 **Rich Assertions**: Fluent API for verifying process execution, user tasks, and decisions
 - 🎭 **Job Worker Mocking**: Powerful mocking capabilities for service tasks
-- ⏰ **Time Control**: Manipulate process time for testing timers and timeouts
+- ⏰ **Time Control**: Full control over Zeebe's internal clock for testing timers and timeouts
 - 🔧 **TypeScript Support**: Full TypeScript support with type definitions
 - 🧪 **Jest Integration**: Seamless integration with Jest testing framework
 - 🐛 **Debug Mode**: Comprehensive debugging for Docker operations and test execution
@@ -59,8 +59,8 @@ describe('Order Process', () => {
       .thenComplete({ tracking: 'TR123456' });
 
     // Start process instance
-    const zeebe = client.getCamundaRestClient();
-    const processInstance = await zeebe.createProcessInstance({
+    const camunda = client.getCamundaRestClient();
+    const processInstance = await camunda.createProcessInstance({
       processDefinitionId: 'order-process',
       variables: { orderId: 'order-123', amount: 99.99 }
     });
@@ -103,8 +103,8 @@ class MyProcessTest {
       .thenComplete({ tracking: 'TR123456' });
 
     // Start process instance
-    const zeebe = this.client.getCamundaRestClient();
-    const processInstance = await zeebe.createProcessInstance({
+    const camunda = this.client.getCamundaRestClient();
+    const processInstance = await camunda.createProcessInstance({
       processDefinitionId: 'order-process',
       variables: { orderId: 'order-123', amount: 99.99 }
     });
@@ -132,9 +132,9 @@ Create a `camunda-container-runtime.json` file in your project root to configure
 {
   "camundaVersion": "8.7.0",
   "camundaDockerImageName": "camunda/camunda",
-  "camundaDockerImageVersion": "8.8.0-alpha5",
+  "camundaDockerImageVersion": "8.8.0-alpha6",
   "connectorsDockerImageName": "camunda/connectors-bundle",
-  "connectorsDockerImageVersion": "8.8.0-alpha5",
+  "connectorsDockerImageVersion": "8.8.0-alpha6",
   "runtimeMode": "MANAGED"
 }
 ```
@@ -163,9 +163,9 @@ The framework uses the following priority order for configuration:
 ```json
 {
   "camundaDockerImageName": "camunda/camunda",
-  "camundaDockerImageVersion": "8.8.0-alpha5",
+  "camundaDockerImageVersion": "8.8.0-alpha6",
   "connectorsDockerImageName": "camunda/connectors-bundle", 
-  "connectorsDockerImageVersion": "8.8.0-alpha5",
+  "connectorsDockerImageVersion": "8.8.0-alpha6",
   "runtimeMode": "MANAGED"
 }
 ```
@@ -191,10 +191,10 @@ The framework uses the following priority order for configuration:
 Override configuration file settings or set additional options:
 
 ```bash
-# Container configuration
-CAMUNDA_DOCKER_IMAGE_VERSION=8.8.0-alpha5
+# Environment configuration
+CAMUNDA_DOCKER_IMAGE_VERSION=8.8.0-alpha6
 CAMUNDA_DOCKER_IMAGE_NAME=camunda/camunda
-CONNECTORS_DOCKER_IMAGE_VERSION=8.8.0-alpha5
+CONNECTORS_DOCKER_IMAGE_VERSION=8.8.0-alpha6
 CAMUNDA_RUNTIME_MODE=MANAGED  # or REMOTE
 
 # Runtime configuration  
@@ -235,9 +235,9 @@ await context.deployDecision('./decisions/approval.dmn');
 
 ```typescript
 const client = setup.getClient();
-const zeebe = client.getCamundaRestClient();
+const camunda = client.getCamundaRestClient();
 
-const processInstance = await zeebe.createProcessInstance({
+const processInstance = await camunda.createProcessInstance({
   processDefinitionId: 'my-process',
   variables: { input: 'test-data' }
 });
@@ -323,18 +323,99 @@ await decisionAssertion.hasResultContaining({ score: 85 });
 
 ### Time Manipulation
 
-```typescript
-// Increase time for timer testing
-context.increaseTime({ hours: 24 });
-context.increaseTime({ minutes: 30 });
-context.increaseTime(5000); // milliseconds
+Control Zeebe's internal clock for testing time-based processes like timers, timeouts, and scheduled tasks.
 
-// Reset to current time
-context.resetTime();
+```typescript
+// Increase time for timer testing (async - advances Zeebe's actual clock)
+await context.increaseTime({ hours: 24 });
+await context.increaseTime({ minutes: 30 });
+await context.increaseTime(5000); // milliseconds
 
 // Get current test time
 const currentTime = context.getCurrentTime();
 ```
+
+#### Timer Process Testing
+
+```typescript
+test('should complete timer-based process', async () => {
+  const client = setup.getClient();
+  const context = setup.getContext();
+
+  // Deploy process with timer event
+  await context.deployProcess('./processes/timer-process.bpmn');
+
+  // Mock service task after timer
+  await context.mockJobWorker('after-timer')
+    .thenComplete({ timerCompleted: true });
+
+  // Start process
+  const camunda = client.getCamundaRestClient();
+  const processInstance = await camunda.createProcessInstance({
+    processDefinitionId: 'timer-process',
+    variables: {}
+  });
+
+  // Verify process is waiting at timer
+  const assertion1 = CamundaAssert.assertThat(processInstance);
+  await assertion1.isActive();
+  await assertion1.hasActiveElements('wait-timer');
+
+  // Advance time to trigger timer (advances Zeebe's internal clock)
+  await context.increaseTime({ hours: 1 });
+
+  // Verify timer triggered and process completed
+  const assertion2 = CamundaAssert.assertThat(processInstance);
+  await assertion2.isCompleted();
+  await assertion2.hasCompletedElements('wait-timer', 'after-timer-task');
+});
+```
+
+#### Clock Management API
+
+The framework provides direct access to Zeebe's clock management through the `CamundaClock` utility:
+
+```typescript
+import { CamundaClock } from '@camunda/process-test-node';
+
+// Create clock instance (usually done automatically by the framework)
+const runtime = setup.getRuntime();
+const clock = new CamundaClock(runtime);
+
+// Get current Zeebe time
+const currentTime = await clock.getCurrentTime();
+
+// Advance clock by milliseconds
+await clock.addTime(60000); // 1 minute
+
+// Advance using convenience method
+await clock.advanceTime(1, 'hours');
+await clock.advanceTime(30, 'minutes');
+await clock.advanceTime(5, 'seconds');
+
+// Reset clock to system time
+await clock.resetClock();
+```
+
+#### Supported Time Units
+
+```typescript
+// All these are equivalent to 1 hour
+await context.increaseTime(3600000); // milliseconds
+await context.increaseTime({ hours: 1 });
+await context.increaseTime({ minutes: 60 });
+await context.increaseTime({ seconds: 3600 });
+
+// Combined durations
+await context.increaseTime({ 
+  days: 1, 
+  hours: 2, 
+  minutes: 30, 
+  seconds: 45 
+});
+```
+
+**Note**: Time manipulation uses Zeebe's internal clock management API and requires the `ZEEBE_CLOCK_CONTROLLED=true` environment variable (automatically set by the framework).
 
 ## Debug Mode
 
@@ -365,7 +446,7 @@ DEBUG=camunda:test:logs npm test       # Container log capture
 
 When debugging is enabled, detailed container logs are saved to `./camunda-test-logs/`:
 - `elasticsearch-{timestamp}.log` - Elasticsearch startup and operation logs
-- `zeebe-{timestamp}.log` - Zeebe broker logs with BPMN processing details
+- `camunda-{timestamp}.log` - Camunda broker logs with BPMN processing details
 - `connectors-{timestamp}.log` - Connector runtime logs (if enabled)
 
 For detailed debugging instructions, see [DEBUG.md](DEBUG.md).
@@ -421,8 +502,8 @@ describe('Order Integration Test', () => {
       .thenComplete({ transactionId: 'tx-12345', status: 'success' });
 
     // Test the complete flow
-    const zeebe = client.getCamundaRestClient();
-    const orderInstance = await zeebe.createProcessInstance({
+    const camunda = client.getCamundaRestClient();
+    const orderInstance = await camunda.createProcessInstance({
       processDefinitionId: 'order-process',
       variables: { customerId: 'c123', amount: 599.99 }
     });
@@ -451,8 +532,8 @@ test('should handle payment failure', async () => {
   await context.mockJobWorker('payment-service')
     .thenThrowBpmnError('PAYMENT_FAILED', 'Insufficient funds');
 
-  const zeebe = client.getCamundaRestClient();
-  const processInstance = await zeebe.createProcessInstance({
+  const camunda = client.getCamundaRestClient();
+  const processInstance = await camunda.createProcessInstance({
     processDefinitionId: 'payment-process',
     variables: { amount: 1000000 } // Large amount
   });
@@ -474,8 +555,7 @@ test('should handle payment failure', async () => {
 ### Optimizations
 ```bash
 # Pre-pull images to speed up tests
-docker pull camunda/zeebe:8.7.0
-docker pull docker.elastic.co/elasticsearch/elasticsearch:8.11.0
+docker pull camunda/camunda:8.8.0-alpha6
 
 # Clean up containers after testing
 docker container prune -f
@@ -507,7 +587,7 @@ npm test --testTimeout=300000
 **Solution**: Clean up existing containers
 ```bash
 # Stop all Camunda containers
-docker stop $(docker ps -q --filter ancestor=camunda/zeebe)
+docker stop $(docker ps -q --filter ancestor=camunda/camunda)
 
 # Or restart Docker Desktop
 ```
@@ -536,6 +616,7 @@ DEBUG=camunda:test:logs npm test
 - **`@CamundaProcessTest`**: Decorator for test classes
 - **`CamundaAssert`**: Main assertion entry point
 - **`CamundaProcessTestContext`**: Test context and utilities
+- **`CamundaClock`**: Clock management for time-based testing
 - **`JobWorkerMock`**: Job worker mocking utilities
 
 ### Assertion Classes
@@ -554,6 +635,33 @@ DEBUG=camunda:test:logs npm test
 ## Contributing
 
 We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
+
+## CI/CD Support
+
+This library includes comprehensive CI/CD capabilities with sophisticated GitHub Actions workflows:
+
+### Test Types
+- **Unit Tests**: Fast TypeScript-based tests (`npm test`)
+- **Integration Tests**: Full Docker-based Camunda tests (`npm run test:integration`)
+
+### GitHub Actions Features
+- **Docker Optimization**: Pre-pull of Camunda images for faster CI execution
+- **Extended Timeouts**: 45-minute timeout for complex integration scenarios
+- **Environment Configuration**: Proper CI environment variables and debug settings
+- **Parallel Execution**: Separate jobs for code quality and integration testing
+- **Comprehensive Coverage**: Both unit and integration tests run on every PR/push
+
+### Running Tests Locally
+```bash
+# Unit tests (fast, no Docker required)
+npm test
+
+# Integration tests (requires Docker)
+npm run test:integration
+
+# Run specific integration test
+npm run test:integration -- --testNamePattern="simple"
+```
 
 ## License
 

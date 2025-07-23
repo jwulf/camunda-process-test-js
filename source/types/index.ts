@@ -1,71 +1,75 @@
-import { Camunda8 } from '@camunda8/sdk';
+import { Camunda8 } from '@camunda8/sdk'
+// Import SDK types
+import type {
+	GetDecisionInstanceResponse as SDKDecisionInstance,
+	ProcessInstanceDetails as SDKProcessInstanceDetails,
+	UserTask as SDKUserTask,
+} from '@camunda8/sdk/dist/c8/lib/C8Dto'
 
 export interface ProcessInstanceEvent {
-  processInstanceKey: string;
-  processDefinitionKey: string;
-  version: number;
+	processInstanceKey: string
+	processDefinitionKey: string
+	version?: number
 }
 
 export interface ProcessInstanceResult extends ProcessInstanceEvent {
-  variables: Record<string, any>;
+	variables: Record<string, unknown>
 }
 
-export interface UserTask {
-  key: string;
-  processInstanceKey: string;
-  elementId: string;
-  assignee?: string;
-  candidateGroups?: string[];
-  variables: Record<string, any>;
-}
+// Re-export SDK types with our naming
+export type UserTask = SDKUserTask
+export type ProcessInstance = SDKProcessInstanceDetails
+export type DecisionInstance = SDKDecisionInstance
 
-export interface DecisionInstance {
-  key: string;
-  decisionId: string;
-  decisionName: string;
-  processInstanceKey?: string;
-  result: any;
+// Legacy interface for backwards compatibility (deprecated)
+/** @deprecated Use DecisionInstance from SDK instead */
+export interface LegacyDecisionInstance {
+	key: string
+	decisionId: string
+	decisionName: string
+	processInstanceKey?: string
+	result: unknown
 }
 
 export interface CamundaRuntimeConfiguration {
-  camundaDockerImageName?: string;
-  camundaDockerImageVersion?: string;
-  camundaEnvVars?: Record<string, string>;
-  camundaExposedPorts?: number[];
-  connectorsEnabled?: boolean;
-  connectorsDockerImageName?: string;
-  connectorsDockerImageVersion?: string;
-  connectorsEnvVars?: Record<string, string>;
-  connectorsSecrets?: Record<string, string>;
-  runtimeMode?: 'MANAGED' | 'REMOTE';
-  remote?: {
-    gatewayAddress?: string;
-    camundaMonitoringApiAddress?: string;
-    connectorsRestApiAddress?: string;
-  };
+	camundaDockerImageName?: string
+	camundaDockerImageVersion?: string
+	camundaEnvVars?: Record<string, string>
+	camundaExposedPorts?: number[]
+	connectorsEnabled?: boolean
+	connectorsDockerImageName?: string
+	connectorsDockerImageVersion?: string
+	connectorsEnvVars?: Record<string, string>
+	connectorsSecrets?: Record<string, string>
+	runtimeMode?: 'MANAGED' | 'REMOTE'
+	remote?: {
+		gatewayAddress?: string
+		camundaMonitoringApiAddress?: string
+		connectorsRestApiAddress?: string
+	}
 }
 
 export interface CamundaTestClient {
-  zeebe: Camunda8;
-  processInstanceKey?: string;
+	camunda: Camunda8
+	processInstanceKey?: string
 }
 
 export type ElementSelector = {
-  type: 'id' | 'name' | 'type' | 'custom';
-  value: string | ((element: any) => boolean);
-};
+	type: 'id' | 'name' | 'type' | 'custom'
+	value: string | ((element: unknown) => boolean)
+}
 
 export type ProcessInstanceSelector = {
-  type: 'key' | 'processId' | 'custom';
-  value: string | ((instance: any) => boolean);
-};
+	type: 'key' | 'processId' | 'custom'
+	value: string | ((instance: ProcessInstance) => boolean)
+}
 
 export type UserTaskSelector = {
-  type: 'key' | 'elementId' | 'assignee' | 'custom';
-  value: string | ((task: any) => boolean);
-};
+	type: 'key' | 'elementId' | 'assignee' | 'custom'
+	value: string | ((task: UserTask) => boolean)
+}
 
 export type DecisionSelector = {
-  type: 'key' | 'decisionId' | 'processInstanceKey' | 'custom';
-  value: string | ((decision: any) => boolean);
-};
+	type: 'key' | 'decisionId' | 'processInstanceKey' | 'custom'
+	value: string | ((decision: DecisionInstance) => boolean)
+}

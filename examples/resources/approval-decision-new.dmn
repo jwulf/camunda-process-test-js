@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="https://www.omg.org/spec/DMN/20191111/MODEL/" 
+             xmlns:dmndi="https://www.omg.org/spec/DMN/20191111/DMNDI/" 
+             xmlns:dc="http://www.omg.org/spec/DD/20100524/DC/" 
+             id="Definitions_1" 
+             name="Approval Decision" 
+             namespace="http://camunda.org/schema/1.0/dmn">
+  
+  <decision id="approval-decision" name="Approval Decision">
+    <decisionTable id="DecisionTable_1" hitPolicy="FIRST">
+      <input id="InputClause_1" label="Amount">
+        <inputExpression id="InputExpression_1" typeRef="number">
+          <text>amount</text>
+        </inputExpression>
+      </input>
+      <input id="InputClause_2" label="Requestor">
+        <inputExpression id="InputExpression_2" typeRef="string">
+          <text>requestor</text>
+        </inputExpression>
+      </input>
+      <output id="OutputClause_1" label="Approved" name="approved" typeRef="boolean" />
+      <output id="OutputClause_2" label="Reason" name="reason" typeRef="string" />
+      
+      <rule id="DecisionRule_1">
+        <inputEntry id="UnaryTests_1">
+          <text>&lt;= 1000</text>
+        </inputEntry>
+        <inputEntry id="UnaryTests_2">
+          <text>-</text>
+        </inputEntry>
+        <outputEntry id="LiteralExpression_1">
+          <text>true</text>
+        </outputEntry>
+        <outputEntry id="LiteralExpression_2">
+          <text>"Auto-approved for small amount"</text>
+        </outputEntry>
+      </rule>
+      
+      <rule id="DecisionRule_2">
+        <inputEntry id="UnaryTests_3">
+          <text>&gt; 1000</text>
+        </inputEntry>
+        <inputEntry id="UnaryTests_4">
+          <text>"manager"</text>
+        </inputEntry>
+        <outputEntry id="LiteralExpression_3">
+          <text>true</text>
+        </outputEntry>
+        <outputEntry id="LiteralExpression_4">
+          <text>"Auto-approved for manager"</text>
+        </outputEntry>
+      </rule>
+      
+      <rule id="DecisionRule_3">
+        <inputEntry id="UnaryTests_5">
+          <text>&gt; 1000</text>
+        </inputEntry>
+        <inputEntry id="UnaryTests_6">
+          <text>not("manager")</text>
+        </inputEntry>
+        <outputEntry id="LiteralExpression_5">
+          <text>false</text>
+        </outputEntry>
+        <outputEntry id="LiteralExpression_6">
+          <text>"Requires manager approval"</text>
+        </outputEntry>
+      </rule>
+    </decisionTable>
+  </decision>
+</definitions>

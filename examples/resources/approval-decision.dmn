@@ -1,25 +1,32 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<definitions xmlns="https://www.omg.org/spec/DMN/20191111/MODEL/" xmlns:dmndi="https://www.omg.org/spec/DMN/20191111/DMNDI/" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:modeler="http://camunda.org/schema/modeler/1.0" id="Definitions_1" name="DRD" namespace="http://camunda.org/schema/1.0/dmn" exporter="Camunda Modeler" exporterVersion="5.25.0" modeler:executionPlatform="Camunda Cloud" modeler:executionPlatformVersion="8.5.0">
+<definitions xmlns="https://www.omg.org/spec/DMN/20191111/MODEL/"
+  xmlns:dmndi="https://www.omg.org/spec/DMN/20191111/DMNDI/"
+  xmlns:dc="http://www.omg.org/spec/DD/20100524/DC/"
+  id="Definitions_1"
+  name="Approval Decision"
+  namespace="http://camunda.org/schema/1.0/dmn">
+
   <decision id="approval-decision" name="Approval Decision">
-    <decisionTable id="DecisionTable_1">
-      <input id="Input_1" label="Amount">
+    <decisionTable id="DecisionTable_1" hitPolicy="FIRST">
+      <input id="InputClause_1" label="Amount">
         <inputExpression id="InputExpression_1" typeRef="number">
           <text>amount</text>
         </inputExpression>
       </input>
-      <input id="Input_2" label="Requestor">
+      <input id="InputClause_2" label="Requestor">
         <inputExpression id="InputExpression_2" typeRef="string">
           <text>requestor</text>
         </inputExpression>
       </input>
-      <output id="Output_1" label="Approved" name="approved" typeRef="boolean" />
-      <output id="Output_2" label="Reason" name="reason" typeRef="string" />
+      <output id="OutputClause_1" label="Approved" name="approved" typeRef="boolean" />
+      <output id="OutputClause_2" label="Reason" name="reason" typeRef="string" />
+
       <rule id="DecisionRule_1">
         <inputEntry id="UnaryTests_1">
           <text>&lt;= 1000</text>
         </inputEntry>
         <inputEntry id="UnaryTests_2">
-          <text></text>
+          <text>-</text>
         </inputEntry>
         <outputEntry id="LiteralExpression_1">
           <text>true</text>
@@ -28,6 +35,7 @@
           <text>"Auto-approved for small amount"</text>
         </outputEntry>
       </rule>
+
       <rule id="DecisionRule_2">
         <inputEntry id="UnaryTests_3">
           <text>&gt; 1000</text>
@@ -42,6 +50,7 @@
           <text>"Auto-approved for manager"</text>
         </outputEntry>
       </rule>
+
       <rule id="DecisionRule_3">
         <inputEntry id="UnaryTests_5">
           <text>&gt; 1000</text>
@@ -58,11 +67,4 @@
       </rule>
     </decisionTable>
   </decision>
-  <dmndi:DMNDI>
-    <dmndi:DMNDiagram>
-      <dmndi:DMNShape dmnElementRef="approval-decision">
-        <dc:Bounds height="80" width="180" x="160" y="100" />
-      </dmndi:DMNShape>
-    </dmndi:DMNDiagram>
-  </dmndi:DMNDI>
 </definitions>

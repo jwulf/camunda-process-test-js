@@ -2,6 +2,19 @@
 
 This directory contains working examples demonstrating how to use the Camunda Process Test framework for Node.js.
 
+## 🚀 Quick Start
+
+```bash
+# Run a simple example
+npm run examples:simple
+
+# Run with debugging
+npm run examples:simple:debug
+
+# Run all examples
+npm run examples
+```
+
 ## 📁 Examples Overview
 
 | Example | Description | Use Case |
@@ -33,32 +46,62 @@ All examples use process definitions in the [`resources/`](resources/) directory
 
 ### Docker Images
 The framework automatically pulls these images on first run:
-- `camunda/zeebe:8.7.0` (Zeebe process engine)
-- `docker.elastic.co/elasticsearch/elasticsearch:8.11.0` (Required by Zeebe)
+- `camunda/camunda:8.7.0` (Camunda process engine)
 
-**Note**: First run takes 3-5 minutes for image downloads. Subsequent runs are much faster (~30-60 seconds).
+**Note**: First run takes 3-5 minutes for image downloads. Subsequent runs are much faster (~30-90 seconds).
 
 ## 🏃 Running Examples
 
+### Available Scripts
+
+| Script | Description |
+|--------|-------------|
+| `npm run examples` | Run all examples |
+| `npm run examples:simple` | Run simple process test |
+| `npm run examples:debug` | Run debug demonstration |
+| `npm run examples:basic` | Run comprehensive examples |
+| `npm run examples:simple:debug` | Run simple example with full debug output |
+| `npm run examples:debug:debug` | Run debug example with full debug output |
+| `npm run examples:basic:debug` | Run comprehensive examples with full debug output |
+| `npm run examples:all:debug` | Run all examples with full debug output |
+
 ### Quick Start
 ```bash
-# 1. Build the framework
-npm run build
+# Run a simple example (automatically builds first)
+npm run examples:simple
 
-# 2. Run a simple example
-npm test examples/simple.test.ts
+# Run with debugging (recommended for first time)
+npm run examples:simple:debug
+```
 
-# 3. Run with debugging (recommended for first time)
-DEBUG=camunda:* npm test examples/simple.test.ts
+### Individual Examples
+```bash
+# Run specific examples
+npm run examples:simple      # Simple process test
+npm run examples:debug       # Debug demonstration
+npm run examples:basic       # Comprehensive examples
+
+# Run with full debug output
+npm run examples:simple:debug
+npm run examples:debug:debug
+npm run examples:basic:debug
 ```
 
 ### All Examples
 ```bash
 # Run all examples
-npm test examples/
+npm run examples
 
-# Run specific example with timeout
-npm test examples/basic-test.test.ts --testTimeout=180000
+# Run all examples with debugging
+npm run examples:all:debug
+```
+
+### Manual Jest Commands (Advanced)
+```bash
+# If you prefer manual control
+npm run build
+npm test examples/simple.test.ts
+DEBUG=camunda:* npm test examples/simple.test.ts
 ```
 
 ## 🐛 Debug Mode
@@ -67,20 +110,14 @@ Enable debugging to see detailed container operations and test execution:
 
 ### Debug Categories
 ```bash
-# Everything (verbose)
-DEBUG=camunda:* npm test examples/debug.test.ts
+# Everything (verbose) - use the debug scripts
+npm run examples:debug:debug
 
-# Container operations only
-DEBUG=camunda:test:container npm test examples/simple.test.ts
-
-# Deployment details
-DEBUG=camunda:test:deploy npm test examples/basic-test.test.ts
-
-# Runtime lifecycle
-DEBUG=camunda:test:runtime npm test examples/simple.test.ts
-
-# Container log capture
-DEBUG=camunda:test:logs npm test examples/simple.test.ts
+# Or use manual commands for specific debug categories
+DEBUG=camunda:test:container npm test examples/simple.test.ts  # Container operations only
+DEBUG=camunda:test:deploy npm test examples/basic-test.test.ts  # Deployment details
+DEBUG=camunda:test:runtime npm test examples/simple.test.ts     # Runtime lifecycle
+DEBUG=camunda:test:logs npm test examples/simple.test.ts       # Container log capture
 ```
 
 ### What You'll See
@@ -112,7 +149,7 @@ With debugging enabled, you get detailed output about:
 
 **Run it**:
 ```bash
-npm test examples/simple.test.ts
+npm run examples:simple
 ```
 
 **Expected output**: ✅ Process completes successfully
@@ -130,7 +167,7 @@ npm test examples/simple.test.ts
 
 **Run it**:
 ```bash
-DEBUG=camunda:* npm test examples/debug.test.ts
+npm run examples:debug:debug
 ```
 
 **Expected output**: ✅ Process completes with verbose debug information
@@ -152,7 +189,7 @@ DEBUG=camunda:* npm test examples/debug.test.ts
 
 **Run it**:
 ```bash
-npm test examples/basic-test.test.ts
+npm run examples:basic
 ```
 
 **Expected output**: ✅ Multiple test scenarios pass
@@ -161,14 +198,13 @@ npm test examples/basic-test.test.ts
 
 ### Container Startup
 - **First run**: 3-5 minutes (image downloads)
-- **Subsequent runs**: 30-60 seconds (cached images)
+- **Subsequent runs**: 30-90 seconds (cached images)
 - **Parallel tests**: Use `maxWorkers: 1` in Jest config
 
 ### Optimizations
 ```bash
 # Pre-pull images to speed up tests
-docker pull camunda/zeebe:8.7.0
-docker pull docker.elastic.co/elasticsearch/elasticsearch:8.11.0
+docker pull camunda/camunda:8.7.0
 
 # Clean up containers after testing
 docker container prune -f
@@ -178,11 +214,11 @@ docker container prune -f
 
 ### Common Issues
 
-#### 1. "manifest for camunda/zeebe:X.X.X not found"
+#### 1. "manifest for camunda/camunda:X.X.X not found"
 **Solution**: Check Docker image version in configuration
 ```bash
 # Use known working version
-CAMUNDA_DOCKER_IMAGE_VERSION=8.7.0 npm test examples/simple.test.ts
+CAMUNDA_DOCKER_IMAGE_VERSION=8.7.0 npm run examples:simple
 ```
 
 #### 2. "Docker daemon not running"
@@ -197,8 +233,8 @@ docker ps
 #### 3. "Timeout waiting for container"
 **Solution**: Increase Jest timeout or check Docker resources
 ```bash
-# Run with longer timeout
-npm test examples/simple.test.ts --testTimeout=300000
+# Run with longer timeout (use manual Jest command)
+npm run build && npm test examples/simple.test.ts --testTimeout=300000
 
 # Check Docker resources in Docker Desktop settings
 ```
@@ -207,7 +243,7 @@ npm test examples/simple.test.ts --testTimeout=300000
 **Solution**: Clean up existing containers
 ```bash
 # Stop all Camunda containers
-docker stop $(docker ps -q --filter ancestor=camunda/zeebe)
+docker stop $(docker ps -q --filter ancestor=camunda/camunda)
 
 # Or restart Docker Desktop
 ```
@@ -232,14 +268,17 @@ DEBUG=camunda:test:runtime npm test examples/basic-test.test.ts
 # Capture container logs for detailed inspection
 DEBUG=camunda:test:logs npm test examples/simple.test.ts
 # Then check ./camunda-test-logs/ for detailed container logs
+
+# Or use the convenient debug scripts
+npm run examples:simple:debug  # Full debug output for simple example
+npm run examples:all:debug     # Full debug output for all examples
 ```
 
 ### Container Log Analysis
 When debugging is enabled, detailed container logs are saved to `./camunda-test-logs/`:
-- `elasticsearch-{timestamp}.log` - Elasticsearch startup and operation logs
-- `zeebe-{timestamp}.log` - Zeebe broker logs with BPMN processing details
-- `zeebe-startup-{timestamp}.log` - Initial Zeebe startup logs
-- `zeebe-timeout-{timestamp}.log` - Logs when Zeebe startup times out
+- `camunda-{timestamp}.log` - Camunda broker logs with BPMN processing details
+- `camunda-startup-{timestamp}.log` - Initial Camunda startup logs
+- `camunda-timeout-{timestamp}.log` - Logs when Camunda startup times out
 
 These logs contain:
 - Container startup sequences and timing
@@ -252,8 +291,8 @@ These logs contain:
 
 ### Client Usage
 ```typescript
-const zeebe = client.getCamundaRestClient();
-const processInstance = await zeebe.createProcessInstance({
+const camunda = client.getCamundaRestClient();
+const processInstance = await camunda.createProcessInstance({
   processDefinitionId: 'my-process',
   variables: { input: 'test' }
 });
@@ -302,7 +341,7 @@ Recommended `jest.config.js` for running these examples:
 module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'node',
-  testTimeout: 120000, // 2 minutes for container startup
+  testTimeout: 180000, // 3 minutes for container startup
   detectOpenHandles: true,
   forceExit: true,
   maxWorkers: 1, // Run tests sequentially to avoid container conflicts

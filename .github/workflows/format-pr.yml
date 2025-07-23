@@ -1,0 +1,73 @@
+name: Format PR Code
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: read
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          ref: ${{ github.event.pull_request.head.ref }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check if last commit was by bot
+        id: check-last-commit
+        run: |
+          LAST_COMMIT_AUTHOR=$(git log -1 --pretty=format:'%an')
+          if [ "$LAST_COMMIT_AUTHOR" = "GitHub Action" ]; then
+            echo "skip=true" >> $GITHUB_OUTPUT
+          else
+            echo "skip=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Format code with Prettier
+        if: steps.check-last-commit.outputs.skip == 'false'
+        run: npm run format
+
+      - name: Fix ESLint issues
+        if: steps.check-last-commit.outputs.skip == 'false'
+        run: npm run lint
+        continue-on-error: true
+
+      - name: Check for changes
+        if: steps.check-last-commit.outputs.skip == 'false'
+        id: verify-changed-files
+        run: |
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "changed=true" >> $GITHUB_OUTPUT
+          else
+            echo "changed=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Configure Git for authenticated push
+        if: steps.check-last-commit.outputs.skip == 'false' && steps.verify-changed-files.outputs.changed == 'true'
+        run: |
+          git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
+
+      - name: Commit changes
+        if: steps.check-last-commit.outputs.skip == 'false' && steps.verify-changed-files.outputs.changed == 'true'
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add .
+          git commit -m "style: auto-format code with prettier and eslint"
+          git push
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
