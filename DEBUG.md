@@ -27,6 +27,16 @@ DEBUG=camunda:test:container npm test examples/debug.test.ts
 | `camunda:test:worker` | Job worker operations | 🔧 Worker creation and registration |
 | `camunda:test:logs` | Container log capture | 📋 Log file creation and storage |
 
+Consult the [Camunda 8 SDK documentation](https://camunda.github.io/camunda-8-js-sdk/#debugging) for debug categories for the SDK. 
+
+## Enable Debug-level Logging for the Camunda 8 SDK
+
+You can also enable debug-level logging for the Camunda Rest Client: 
+
+```
+CAMUNDA_LOG_LEVEL=debug npm test/examples/basic-test.test.ts
+```
+
 ## 🔍 Common Debug Commands
 
 ### Full Verbose Mode
