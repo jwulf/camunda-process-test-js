@@ -17,7 +17,7 @@
     "test:integration": "jest examples/",
     "test:ci": "npm run test:unit && npm run test:integration",
     "test:watch": "jest --watch",
-    "lint": "eslint source/**/*.ts examples/**/*.ts",
+    "lint": "eslint --fix source/**/*.ts examples/**/*.ts",
     "prepublishOnly": "npm run build",
     "commit": "cz",
     "prepare": "husky install",
