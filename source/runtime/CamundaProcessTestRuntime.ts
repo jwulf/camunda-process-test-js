@@ -121,6 +121,33 @@ export class CamundaProcessTestRuntime {
 		return this.config.remote?.connectorsRestApiAddress
 	}
 
+	getContainer(): CamundaContainer {
+		if (!this.container) {
+			throw new Error('Container not available - runtime not started')
+		}
+		return this.container as unknown as CamundaContainer
+	}
+
+	getMonitoringApiPort(): number {
+		if (!this.container) {
+			throw new Error('Container not available - runtime not started')
+		}
+		return this.container.getMappedPort(
+			ContainerRuntimePorts.CAMUNDA_MONITORING_API
+		)
+	}
+
+	getMonitoringApiAddress(): string {
+		if (!this.container) {
+			throw new Error('Container not available - runtime not started')
+		}
+		const port = this.container.getMappedPort(
+			ContainerRuntimePorts.CAMUNDA_MONITORING_API
+		)
+		const host = this.container.getHost()
+		return `http://${host}:${port}`
+	}
+
 	private async startRemoteMode(): Promise<void> {
 		debug('Starting in remote mode')
 		this.gatewayAddress =

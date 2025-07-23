@@ -1,6 +1,7 @@
 import { Camunda8 } from '@camunda8/sdk'
 import Debug from 'debug'
 
+import { CamundaClock } from './CamundaClock'
 import { CamundaProcessTestRuntime } from './CamundaProcessTestRuntime'
 import { JobWorkerMock } from './JobWorkerMock'
 
@@ -16,11 +17,14 @@ export class CamundaProcessTestContext {
 	private currentTime: Date = new Date()
 	private jobWorkers: JobWorkerMock[] = []
 	private deployedProcesses: string[] = []
+	private clock: CamundaClock
 
 	constructor(
 		private runtime: CamundaProcessTestRuntime,
 		protected client: Camunda8
-	) {}
+	) {
+		this.clock = new CamundaClock(runtime)
+	}
 
 	/**
 	 * Gets the Zeebe client for interacting with the process engine.
@@ -109,11 +113,11 @@ export class CamundaProcessTestContext {
 	 * Increases the current time by the specified duration.
 	 * This affects timers and scheduled tasks in processes.
 	 */
-	increaseTime(
+	async increaseTime(
 		duration:
 			| number
 			| { days?: number; hours?: number; minutes?: number; seconds?: number }
-	): void {
+	): Promise<void> {
 		let milliseconds: number
 
 		if (typeof duration === 'number') {
@@ -131,8 +135,8 @@ export class CamundaProcessTestContext {
 			`Time increased by ${milliseconds}ms to ${this.currentTime.toISOString()}`
 		)
 
-		// TODO: Implement actual time manipulation in Zeebe
-		// This would require custom clock manipulation or test time API
+		// Advance Zeebe's clock using the management API
+		await this.clock.addTime(milliseconds)
 	}
 
 	/**

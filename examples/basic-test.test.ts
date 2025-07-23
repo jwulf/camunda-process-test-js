@@ -120,6 +120,9 @@ class MyProcessTest {
 			.mockJobWorker('risky-task')
 			.thenThrowBpmnError('BUSINESS_ERROR', 'Something went wrong')
 
+		// Set up job worker to handle the error recovery task
+		this.context.mockJobWorker('handle-error').thenComplete()
+
 		// Start process instance
 		const camunda = this.client.getCamundaRestClient()
 		const processInstance = await camunda.createProcessInstance({
@@ -140,6 +143,9 @@ class MyProcessTest {
 		// Deploy process with timer
 		await this.context.deployProcess('examples/resources/timer-process.bpmn')
 
+		// Mock the service task after the timer
+		this.context.mockJobWorker('after-timer').thenComplete()
+
 		// Start process instance
 		const camunda = this.client.getCamundaRestClient()
 		const processInstance = await camunda.createProcessInstance({
@@ -153,7 +159,7 @@ class MyProcessTest {
 		await timerAssertion1.hasActiveElements('wait-timer')
 
 		// Advance time by 1 hour
-		this.context.increaseTime({ hours: 1 })
+		await this.context.increaseTime({ hours: 1 })
 
 		// Verify timer triggered and process completed
 		const timerAssertion2 = CamundaAssert.assertThat(processInstance)
