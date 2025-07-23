@@ -1,4 +1,10 @@
 import { Camunda8 } from '@camunda8/sdk'
+// Import SDK types
+import type {
+	GetDecisionInstanceResponse as SDKDecisionInstance,
+	ProcessInstanceDetails as SDKProcessInstanceDetails,
+	UserTask as SDKUserTask,
+} from '@camunda8/sdk/dist/c8/lib/C8Dto'
 
 export interface ProcessInstanceEvent {
 	processInstanceKey: string
@@ -10,16 +16,14 @@ export interface ProcessInstanceResult extends ProcessInstanceEvent {
 	variables: Record<string, unknown>
 }
 
-export interface UserTask {
-	key: string
-	processInstanceKey: string
-	elementId: string
-	assignee?: string
-	candidateGroups?: string[]
-	variables: Record<string, unknown>
-}
+// Re-export SDK types with our naming
+export type UserTask = SDKUserTask
+export type ProcessInstance = SDKProcessInstanceDetails
+export type DecisionInstance = SDKDecisionInstance
 
-export interface DecisionInstance {
+// Legacy interface for backwards compatibility (deprecated)
+/** @deprecated Use DecisionInstance from SDK instead */
+export interface LegacyDecisionInstance {
 	key: string
 	decisionId: string
 	decisionName: string
@@ -57,15 +61,15 @@ export type ElementSelector = {
 
 export type ProcessInstanceSelector = {
 	type: 'key' | 'processId' | 'custom'
-	value: string | ((instance: unknown) => boolean)
+	value: string | ((instance: ProcessInstance) => boolean)
 }
 
 export type UserTaskSelector = {
 	type: 'key' | 'elementId' | 'assignee' | 'custom'
-	value: string | ((task: unknown) => boolean)
+	value: string | ((task: UserTask) => boolean)
 }
 
 export type DecisionSelector = {
 	type: 'key' | 'decisionId' | 'processInstanceKey' | 'custom'
-	value: string | ((decision: unknown) => boolean)
+	value: string | ((decision: DecisionInstance) => boolean)
 }

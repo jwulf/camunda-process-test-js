@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<definitions xmlns="https://www.omg.org/spec/DMN/20191111/MODEL/"
-  xmlns:dmndi="https://www.omg.org/spec/DMN/20191111/DMNDI/"
-  xmlns:dc="http://www.omg.org/spec/DD/20100524/DC/"
-  id="Definitions_1"
-  name="Approval Decision"
-  namespace="http://camunda.org/schema/1.0/dmn">
-
+<definitions xmlns="https://www.omg.org/spec/DMN/20191111/MODEL/" 
+             xmlns:dmndi="https://www.omg.org/spec/DMN/20191111/DMNDI/" 
+             xmlns:dc="http://www.omg.org/spec/DD/20100524/DC/" 
+             id="Definitions_1" 
+             name="Approval Decision" 
+             namespace="http://camunda.org/schema/1.0/dmn">
+  
   <decision id="approval-decision" name="Approval Decision">
     <decisionTable id="DecisionTable_1" hitPolicy="FIRST">
       <input id="InputClause_1" label="Amount">
@@ -20,7 +20,7 @@
       </input>
       <output id="OutputClause_1" label="Approved" name="approved" typeRef="boolean" />
       <output id="OutputClause_2" label="Reason" name="reason" typeRef="string" />
-
+      
       <rule id="DecisionRule_1">
         <inputEntry id="UnaryTests_1">
           <text>&lt;= 1000</text>
@@ -35,7 +35,7 @@
           <text>"Auto-approved for small amount"</text>
         </outputEntry>
       </rule>
-
+      
       <rule id="DecisionRule_2">
         <inputEntry id="UnaryTests_3">
           <text>&gt; 1000</text>
@@ -50,7 +50,7 @@
           <text>"Auto-approved for manager"</text>
         </outputEntry>
       </rule>
-
+      
       <rule id="DecisionRule_3">
         <inputEntry id="UnaryTests_5">
           <text>&gt; 1000</text>

@@ -36,42 +36,67 @@ import { CamundaProcessTestExtension } from './CamundaProcessTestExtension'
 export function CamundaProcessTest<T extends { new (...args: any[]): {} }>(
 	constructor: T
 ) {
-	return class extends constructor {
-		_camundaExtension = new CamundaProcessTestExtension()
+	const extension = new CamundaProcessTestExtension()
 
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		constructor(...args: any[]) {
-			super(...args)
+	// Inject client and context for the test methods
+	// This will be set during beforeAll, but we need to defer it
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	let client: any
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	let context: any
 
-			// Set up test hooks
-			this.setupTestHooks()
-		}
+	// Set up Jest lifecycle hooks immediately at module evaluation time
+	beforeAll(async () => {
+		await extension.beforeAll()
+		client = extension.getClient()
+		context = extension.getContext()
+	})
 
-		setupTestHooks() {
-			// Jest setup/teardown hooks
-			beforeAll(async () => {
-				await this._camundaExtension.beforeAll()
+	beforeEach(async () => {
+		await extension.beforeEach()
+	})
 
-				// Inject client and context
-				// eslint-disable-next-line @typescript-eslint/no-explicit-any
-				;(this as any).client = this._camundaExtension.getClient()
-				// eslint-disable-next-line @typescript-eslint/no-explicit-any
-				;(this as any).context = this._camundaExtension.getContext()
-			})
+	afterEach(async () => {
+		await extension.afterEach()
+	})
 
-			beforeEach(async () => {
-				await this._camundaExtension.beforeEach()
-			})
+	afterAll(async () => {
+		await extension.afterAll()
+	})
 
-			afterEach(async () => {
-				await this._camundaExtension.afterEach()
-			})
+	// Create an instance to scan for test methods
+	const instance = new constructor()
 
-			afterAll(async () => {
-				await this._camundaExtension.afterAll()
-			})
-		}
-	}
+	// Get all method names from the instance
+	const methodNames = Object.getOwnPropertyNames(
+		Object.getPrototypeOf(instance)
+	)
+
+	// Filter for methods that start with 'test' and are functions
+	const testMethods = methodNames.filter(
+		(name) =>
+			name.startsWith('test') &&
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			typeof (instance as any)[name] === 'function' &&
+			name !== 'constructor'
+	)
+
+	// Register each test method with Jest immediately
+	testMethods.forEach((methodName) => {
+		test(methodName, async () => {
+			// Inject client and context just before running the test
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			;(instance as any).client = client
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			;(instance as any).context = context
+
+			// Execute the test method
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			await (instance as any)[methodName]()
+		})
+	})
+
+	return constructor
 }
 
 /**

@@ -4,6 +4,23 @@ import { DecisionSelector } from '../types'
 
 import { BaseAssert } from './BaseAssert'
 
+// Internal transformed decision instance type
+interface TransformedDecisionInstance {
+	key: string
+	decisionId: string
+	decisionName: string
+	decisionVersion: number
+	decisionType: string
+	state: string
+	result: any
+	input: any
+	processInstanceKey: string
+	processDefinitionKey: string
+	evaluationDate: string
+	evaluationFailure?: string
+	tenantId: string
+}
+
 /**
  * Assertions for decision instances.
  * Provides fluent API for verifying decision evaluation results.
@@ -34,10 +51,7 @@ export class DecisionInstanceAssert extends BaseAssert {
 	 */
 	async wasEvaluated(): Promise<this> {
 		await this.waitUntil(async () => {
-			const decision = (await this.getDecisionInstance()) as Record<
-				string,
-				unknown
-			>
+			const decision = await this.getDecisionInstance()
 			return decision?.state === 'EVALUATED'
 		}, 'Decision to be evaluated')
 		return this
@@ -48,10 +62,7 @@ export class DecisionInstanceAssert extends BaseAssert {
 	 */
 	async hasFailed(): Promise<this> {
 		await this.waitUntil(async () => {
-			const decision = (await this.getDecisionInstance()) as Record<
-				string,
-				unknown
-			>
+			const decision = await this.getDecisionInstance()
 			return decision?.state === 'FAILED'
 		}, 'Decision evaluation to have failed')
 		return this
@@ -86,7 +97,7 @@ export class DecisionInstanceAssert extends BaseAssert {
 				}
 
 				return Object.entries(expectedPartialResult).every(
-					([key, value]) => decision.result[key] === value
+					([key, value]) => (decision.result as any)[key] === value
 				)
 			},
 			`Decision result to contain: ${JSON.stringify(expectedPartialResult)}`
@@ -110,12 +121,60 @@ export class DecisionInstanceAssert extends BaseAssert {
 
 	/**
 	 * Asserts that the decision evaluation has a specific input.
+	 *
+	 * This method uses the getDecisionInstance API to access the evaluatedInputs field
+	 * which contains the input data used during decision evaluation.
 	 */
 	async hasInput(expectedInput: Record<string, any>): Promise<this> {
 		await this.waitUntil(
 			async () => {
-				const decision = await this.getDecisionInstance()
-				return this.deepEqual(decision?.input, expectedInput)
+				// For input assertions, we need to try the getDecisionInstance API
+				// as search results don't include input data
+				try {
+					const decisionKey = await this.getDecisionInstanceKey()
+					if (!decisionKey) {
+						return false
+					}
+
+					// Try to get the full decision instance details with retries
+					let attempts = 0
+					const maxAttempts = 3
+					let decisionDetails = null
+
+					while (attempts < maxAttempts && !decisionDetails) {
+						try {
+							decisionDetails =
+								await this.client.getDecisionInstance(decisionKey)
+							break
+						} catch (error) {
+							attempts++
+							if (
+								attempts < maxAttempts &&
+								error instanceof Error &&
+								error.message.includes('404')
+							) {
+								// Wait a bit before retrying - decision details might not be available immediately
+								await new Promise((resolve) => setTimeout(resolve, 1000))
+								continue
+							}
+							throw error
+						}
+					}
+
+					if (!decisionDetails) {
+						return false
+					}
+
+					const transformedDecision =
+						this.transformDecisionInstanceResponse(decisionDetails)
+					return this.containsInput(transformedDecision?.input, expectedInput)
+				} catch (error) {
+					// If decision instance details are not available, return false to keep retrying
+					if (error instanceof Error && error.message.includes('404')) {
+						return false
+					}
+					throw error
+				}
 			},
 			`Decision to have input: ${JSON.stringify(expectedInput)}`
 		)
@@ -136,21 +195,181 @@ export class DecisionInstanceAssert extends BaseAssert {
 	// ======== Helper methods ========
 
 	/**
+	 * Gets the decision instance ID (primary key) for the current selector.
+	 * Used for operations that require the decision instance ID specifically.
+	 *
+	 * Note: Due to Camunda API design issue #35630, the getDecisionInstance() API
+	 * expects decisionInstanceId (primary key), not decisionInstanceKey (foreign key).
+	 *
+	 * @returns Promise resolving to the decision instance ID or null if not found
+	 * @private
+	 */
+	private async getDecisionInstanceKey(): Promise<string | null> {
+		try {
+			if (this.selector.type === 'key') {
+				// The user might pass either decisionInstanceKey (foreign key) or decisionInstanceId (primary key)
+				// We need to search to find the correct decisionInstanceId
+				const keyValue = this.selector.value as string
+
+				// First try searching by decisionInstanceKey (foreign key)
+				let searchResult = await this.client.searchDecisionInstances({
+					filter: {
+						decisionInstanceKey: keyValue,
+					},
+					sort: [{ field: 'evaluationDate', order: 'DESC' }],
+					page: { from: 0, limit: 1 },
+				})
+
+				if (searchResult.items.length > 0) {
+					return searchResult.items[0].decisionInstanceId
+				}
+
+				// If not found, maybe they passed the decisionInstanceId directly
+				// Try searching without filter and find matching decisionInstanceId
+				searchResult = await this.client.searchDecisionInstances({
+					filter: {},
+					sort: [{ field: 'evaluationDate', order: 'DESC' }],
+					page: { from: 0, limit: 100 },
+				})
+
+				const matchingItem = searchResult.items.find(
+					(item) => item.decisionInstanceId === keyValue
+				)
+				if (matchingItem) {
+					return matchingItem.decisionInstanceId
+				}
+
+				return null
+			}
+
+			if (this.selector.type === 'decisionId') {
+				const searchResult = await this.client.searchDecisionInstances({
+					filter: {
+						decisionDefinitionId: this.selector.value as string,
+					},
+					sort: [{ field: 'evaluationDate', order: 'DESC' }],
+					page: { from: 0, limit: 1 },
+				})
+
+				if (searchResult.items.length === 0) {
+					return null
+				}
+
+				// Return the actual primary key (decisionInstanceId), not the foreign key
+				return searchResult.items[0].decisionInstanceId
+			}
+
+			if (this.selector.type === 'processInstanceKey') {
+				const searchResult = await this.client.searchDecisionInstances({
+					filter: {
+						processInstanceKey: this.selector.value as string,
+					},
+					sort: [{ field: 'evaluationDate', order: 'DESC' }],
+					page: { from: 0, limit: 1 },
+				})
+
+				if (searchResult.items.length === 0) {
+					return null
+				}
+
+				// Return the actual primary key (decisionInstanceId), not the foreign key
+				return searchResult.items[0].decisionInstanceId
+			}
+
+			if (this.selector.type === 'custom') {
+				const searchResult = await this.client.searchDecisionInstances({
+					filter: {},
+					sort: [{ field: 'evaluationDate', order: 'DESC' }],
+					page: { from: 0, limit: 100 },
+				})
+
+				const predicate = this.selector.value as (decision: any) => boolean
+				const matchingItem = searchResult.items.find((item) => {
+					const transformedItem =
+						this.transformDecisionInstanceSearchResult(item)
+					return predicate(transformedItem)
+				})
+
+				if (!matchingItem) {
+					return null
+				}
+
+				// Return the actual primary key (decisionInstanceId), not the foreign key
+				return matchingItem.decisionInstanceId
+			}
+
+			return null
+		} catch (error) {
+			if (error instanceof Error && error.message.includes('404')) {
+				return null
+			}
+			throw error
+		}
+	}
+
+	/**
 	 * Retrieves a decision instance based on the selector type.
 	 * Uses the CamundaRestClient to query actual decision instances from Camunda 8.8+ API.
 	 *
 	 * @returns Promise resolving to the decision instance data or null if not found
 	 * @private
 	 */
-	private async getDecisionInstance(): Promise<any> {
+	private async getDecisionInstance(): Promise<TransformedDecisionInstance | null> {
 		// Use CamundaRestClient to query actual decision instances from Camunda 8.8+ API
 		try {
 			if (this.selector.type === 'key') {
-				// Direct lookup by decision instance key
-				const decisionInstance = await this.client.getDecisionInstance(
-					this.selector.value as string
+				// For 'key' selector, we need to determine if it's a decisionInstanceKey or decisionInstanceId
+				// and get the correct primary key for the API call
+				const keyValue = this.selector.value as string
+
+				// First try searching by decisionInstanceKey (foreign key)
+				let searchResult = await this.client.searchDecisionInstances({
+					filter: {
+						decisionInstanceKey: keyValue,
+					},
+					sort: [{ field: 'evaluationDate', order: 'DESC' }],
+					page: { from: 0, limit: 1 },
+				})
+
+				if (searchResult.items.length > 0) {
+					// Found by foreign key, try to get full details using primary key
+					try {
+						const decisionInstance = await this.client.getDecisionInstance(
+							searchResult.items[0].decisionInstanceId
+						)
+						return this.transformDecisionInstanceResponse(decisionInstance)
+					} catch (error) {
+						// Fallback to search result if getDecisionInstance fails
+						return this.transformDecisionInstanceSearchResult(
+							searchResult.items[0]
+						)
+					}
+				}
+
+				// If not found by foreign key, try searching all and match by decisionInstanceId
+				searchResult = await this.client.searchDecisionInstances({
+					filter: {},
+					sort: [{ field: 'evaluationDate', order: 'DESC' }],
+					page: { from: 0, limit: 100 },
+				})
+
+				const matchingItem = searchResult.items.find(
+					(item) => item.decisionInstanceId === keyValue
 				)
-				return this.transformDecisionInstanceResponse(decisionInstance)
+
+				if (matchingItem) {
+					// Found by primary key, try to get full details
+					try {
+						const decisionInstance =
+							await this.client.getDecisionInstance(keyValue)
+						return this.transformDecisionInstanceResponse(decisionInstance)
+					} catch (error) {
+						// Fallback to search result if getDecisionInstance fails
+						return this.transformDecisionInstanceSearchResult(matchingItem)
+					}
+				}
+
+				return null
 			}
 
 			if (this.selector.type === 'decisionId') {
@@ -167,11 +386,8 @@ export class DecisionInstanceAssert extends BaseAssert {
 					return null
 				}
 
-				// Get the full decision instance details
-				const decisionInstance = await this.client.getDecisionInstance(
-					searchResult.items[0].decisionInstanceKey
-				)
-				return this.transformDecisionInstanceResponse(decisionInstance)
+				// Use search result directly instead of trying getDecisionInstance()
+				return this.transformDecisionInstanceSearchResult(searchResult.items[0])
 			}
 
 			if (this.selector.type === 'processInstanceKey') {
@@ -188,11 +404,8 @@ export class DecisionInstanceAssert extends BaseAssert {
 					return null
 				}
 
-				// Get the full decision instance details
-				const decisionInstance = await this.client.getDecisionInstance(
-					searchResult.items[0].decisionInstanceKey
-				)
-				return this.transformDecisionInstanceResponse(decisionInstance)
+				// Use search result directly instead of trying getDecisionInstance()
+				return this.transformDecisionInstanceSearchResult(searchResult.items[0])
 			}
 
 			if (this.selector.type === 'custom') {
@@ -215,11 +428,8 @@ export class DecisionInstanceAssert extends BaseAssert {
 					return null
 				}
 
-				// Get the full decision instance details
-				const decisionInstance = await this.client.getDecisionInstance(
-					matchingItem.decisionInstanceKey
-				)
-				return this.transformDecisionInstanceResponse(decisionInstance)
+				// Use search result directly instead of trying getDecisionInstance()
+				return this.transformDecisionInstanceSearchResult(matchingItem)
 			}
 
 			return null
@@ -235,12 +445,15 @@ export class DecisionInstanceAssert extends BaseAssert {
 	/**
 	 * Transform the GetDecisionInstanceResponse to match the expected interface.
 	 * Handles JSON parsing of result field and maps API response fields to the internal format.
+	 * Transforms evaluatedInputs array into a key-value object for easier assertion.
 	 *
 	 * @param response - The response from CamundaRestClient.getDecisionInstance()
 	 * @returns Transformed decision instance object or null if response is empty
 	 * @private
 	 */
-	private transformDecisionInstanceResponse(response: any): any {
+	private transformDecisionInstanceResponse(
+		response: any
+	): TransformedDecisionInstance | null {
 		if (!response) {
 			return null
 		}
@@ -256,6 +469,38 @@ export class DecisionInstanceAssert extends BaseAssert {
 			parsedResult = response.result
 		}
 
+		// Transform evaluatedInputs array into a key-value object
+		let transformedInput = {}
+		if (response.evaluatedInputs && Array.isArray(response.evaluatedInputs)) {
+			transformedInput = response.evaluatedInputs.reduce(
+				(acc: any, input: any) => {
+					// Use inputName as key (lowercase for consistency)
+					const key = input.inputName.toLowerCase()
+
+					// Parse inputValue - it might be JSON-escaped or a plain value
+					let parsedValue = input.inputValue
+					try {
+						// Try to parse as JSON first (handles escaped strings and numbers)
+						parsedValue = JSON.parse(input.inputValue)
+					} catch {
+						// If JSON parsing fails, try to convert numbers
+						if (
+							typeof input.inputValue === 'string' &&
+							!isNaN(Number(input.inputValue))
+						) {
+							parsedValue = Number(input.inputValue)
+						} else {
+							// Keep as string if all parsing fails
+							parsedValue = input.inputValue
+						}
+					}
+					acc[key] = parsedValue
+					return acc
+				},
+				{}
+			)
+		}
+
 		return {
 			key: response.decisionInstanceKey,
 			decisionId: response.decisionDefinitionId,
@@ -264,7 +509,7 @@ export class DecisionInstanceAssert extends BaseAssert {
 			decisionType: response.decisionDefinitionType,
 			state: response.state,
 			result: parsedResult,
-			input: response.input || {},
+			input: transformedInput,
 			processInstanceKey: response.processInstanceKey,
 			processDefinitionKey: response.processDefinitionKey,
 			evaluationDate: response.evaluationDate,
@@ -297,6 +542,17 @@ export class DecisionInstanceAssert extends BaseAssert {
 			parsedResult = item.result
 		}
 
+		// Parse the input JSON if it's a string
+		let parsedInput = item.input
+		try {
+			if (typeof item.input === 'string') {
+				parsedInput = JSON.parse(item.input)
+			}
+		} catch {
+			// Keep as string if parsing fails, default to empty object
+			parsedInput = item.input || {}
+		}
+
 		return {
 			key: item.decisionInstanceKey,
 			decisionId: item.decisionDefinitionId,
@@ -305,7 +561,7 @@ export class DecisionInstanceAssert extends BaseAssert {
 			decisionType: item.decisionType,
 			state: item.state,
 			result: parsedResult,
-			input: item.input || {},
+			input: parsedInput,
 			processInstanceKey: item.processInstanceKey,
 			processDefinitionKey: item.processDefinitionKey,
 			evaluationDate: item.evaluationDate,
@@ -334,5 +590,26 @@ export class DecisionInstanceAssert extends BaseAssert {
 				(obj2 as Record<string, unknown>)[key]
 			)
 		)
+	}
+
+	/**
+	 * Checks if the actual input contains all the key-value pairs from expected input.
+	 * This allows for partial matching where expected input can be a subset of actual input.
+	 */
+	private containsInput(actualInput: any, expectedInput: any): boolean {
+		if (!actualInput || !expectedInput) return false
+
+		if (typeof expectedInput !== 'object') {
+			return this.deepEqual(actualInput, expectedInput)
+		}
+
+		// Check if all expected key-value pairs exist in actual input
+		return Object.entries(expectedInput).every(([key, value]) => {
+			const actualValue = (actualInput as Record<string, unknown>)[key]
+			if (typeof value === 'object' && value !== null) {
+				return this.containsInput(actualValue, value)
+			}
+			return this.deepEqual(actualValue, value)
+		})
 	}
 }

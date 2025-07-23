@@ -1,8 +1,11 @@
 import {
-	ElementSelector,
-	ProcessInstanceSelector,
-	UserTaskSelector,
+	DecisionInstance,
 	DecisionSelector,
+	ElementSelector,
+	ProcessInstance,
+	ProcessInstanceSelector,
+	UserTask,
+	UserTaskSelector,
 } from '../../types'
 
 /**
@@ -60,7 +63,7 @@ export class ProcessInstanceSelectors {
 	 * Selects a process instance using a custom predicate function.
 	 */
 	static byCustom(
-		predicate: (instance: unknown) => boolean
+		predicate: (instance: ProcessInstance) => boolean
 	): ProcessInstanceSelector {
 		return { type: 'custom', value: predicate }
 	}
@@ -94,7 +97,7 @@ export class UserTaskSelectors {
 	/**
 	 * Selects a user task using a custom predicate function.
 	 */
-	static byCustom(predicate: (task: unknown) => boolean): UserTaskSelector {
+	static byCustom(predicate: (task: UserTask) => boolean): UserTaskSelector {
 		return { type: 'custom', value: predicate }
 	}
 }
@@ -127,7 +130,9 @@ export class DecisionSelectors {
 	/**
 	 * Selects a decision instance using a custom predicate function.
 	 */
-	static byCustom(predicate: (decision: unknown) => boolean): DecisionSelector {
+	static byCustom(
+		predicate: (decision: DecisionInstance) => boolean
+	): DecisionSelector {
 		return { type: 'custom', value: predicate }
 	}
 
@@ -144,8 +149,8 @@ export class DecisionSelectors {
 
 // Re-export for convenience
 export {
+	DecisionSelector,
 	ElementSelector,
 	ProcessInstanceSelector,
 	UserTaskSelector,
-	DecisionSelector,
 }
