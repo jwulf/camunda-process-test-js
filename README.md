@@ -636,6 +636,33 @@ DEBUG=camunda:test:logs npm test
 
 We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
 
+## CI/CD Support
+
+This library includes comprehensive CI/CD capabilities with sophisticated GitHub Actions workflows:
+
+### Test Types
+- **Unit Tests**: Fast TypeScript-based tests (`npm test`)
+- **Integration Tests**: Full Docker-based Camunda tests (`npm run test:integration`)
+
+### GitHub Actions Features
+- **Docker Optimization**: Pre-pull of Camunda images for faster CI execution
+- **Extended Timeouts**: 45-minute timeout for complex integration scenarios
+- **Environment Configuration**: Proper CI environment variables and debug settings
+- **Parallel Execution**: Separate jobs for code quality and integration testing
+- **Comprehensive Coverage**: Both unit and integration tests run on every PR/push
+
+### Running Tests Locally
+```bash
+# Unit tests (fast, no Docker required)
+npm test
+
+# Integration tests (requires Docker)
+npm run test:integration
+
+# Run specific integration test
+npm run test:integration -- --testNamePattern="simple"
+```
+
 ## License
 
 Apache License 2.0 - see [LICENSE](LICENSE) file for details.

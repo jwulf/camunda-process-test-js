@@ -18,14 +18,14 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
-          cache: 'npm'
+          node-version: "18"
+          cache: "npm"
 
       - name: Install dependencies
         run: npm ci
 
       - name: Format code with Prettier
-        run: npx prettier --write "source/**/*.ts" "test/**/*.ts" "*.md" "*.json"
+        run: npx prettier --write "source/**/*.ts" "test/**/*.ts" "examples/**/*.ts" "*.md" "*.json"
 
       - name: Fix ESLint issues
         run: npm run lint -- --fix

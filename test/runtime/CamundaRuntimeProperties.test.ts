@@ -1,11 +1,11 @@
-import { ContainerRuntimePropertiesUtil } from '../../source/runtime/CamundaRuntimeProperties'
-import { 
-	CAMUNDA_RUNTIME_CONFIGURATION, 
-	getConfigurationProperty,
+import {
+	CAMUNDA_RUNTIME_CONFIGURATION,
 	getAllConfigurationProperties,
+	getConfigurationProperty,
+	getSimpleProperties,
 	getVersionResolverProperties,
-	getSimpleProperties 
 } from '../../source/runtime/CamundaRuntimeConfigurationMap'
+import { ContainerRuntimePropertiesUtil } from '../../source/runtime/CamundaRuntimeProperties'
 
 describe('ContainerRuntimePropertiesUtil', () => {
 	describe('getPropertyOrDefault', () => {
@@ -192,7 +192,7 @@ describe('ContainerRuntimePropertiesUtil', () => {
 			const properties = new ContainerRuntimePropertiesUtil({
 				camundaDockerImageName: 'test-image',
 				camundaDockerImageVersion: '1.0.0',
-				runtimeMode: 'REMOTE'
+				runtimeMode: 'REMOTE',
 			})
 
 			expect(properties.camundaDockerImageName).toBe('test-image')
@@ -205,13 +205,17 @@ describe('ContainerRuntimePropertiesUtil', () => {
 
 			expect(properties.camundaDockerImageName).toBe('camunda/camunda')
 			expect(properties.camundaDockerImageVersion).toBe('SNAPSHOT')
-			expect(properties.connectorsDockerImageName).toBe('camunda/connectors-bundle')
+			expect(properties.connectorsDockerImageName).toBe(
+				'camunda/connectors-bundle'
+			)
 			expect(properties.connectorsDockerImageVersion).toBe('SNAPSHOT')
 			expect(properties.runtimeMode).toBe('MANAGED')
 		})
 
 		it('should provide static methods to access configuration', () => {
-			const config = ContainerRuntimePropertiesUtil.getPropertyConfiguration('camundaDockerImageName')
+			const config = ContainerRuntimePropertiesUtil.getPropertyConfiguration(
+				'camundaDockerImageName'
+			)
 			expect(config).toBeDefined()
 			expect(config?.jsonKey).toBe('camundaDockerImageName')
 			expect(config?.envKey).toBe('CAMUNDA_DOCKER_IMAGE_NAME')
@@ -256,12 +260,14 @@ describe('ContainerRuntimePropertiesUtil', () => {
 
 			// Simple properties should include non-version configs
 			expect(simpleProperties['camundaDockerImageName']).toBeDefined()
-			expect(simpleProperties['camundaDockerImageName'].useVersionResolver).toBeFalsy()
+			expect(
+				simpleProperties['camundaDockerImageName'].useVersionResolver
+			).toBeFalsy()
 
 			// Ensure no overlap
 			const versionKeys = Object.keys(versionProperties)
 			const simpleKeys = Object.keys(simpleProperties)
-			const intersection = versionKeys.filter(key => simpleKeys.includes(key))
+			const intersection = versionKeys.filter((key) => simpleKeys.includes(key))
 			expect(intersection).toHaveLength(0)
 		})
 
