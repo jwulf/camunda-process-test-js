@@ -1,3 +1,10 @@
+## [1.0.1](https://github.com/jwulf/camunda-process-test-js/compare/v1.0.0...v1.0.1) (2025-07-23)
+
+
+### Bug Fixes
+
+* update debugging information ([7da1d56](https://github.com/jwulf/camunda-process-test-js/commit/7da1d56275eff504bbaef149aae1b4c981fcb5f0))
+
 # 1.0.0 (2025-07-23)
 
 
