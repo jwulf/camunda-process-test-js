@@ -36,5 +36,24 @@
 	},
 	"env": {
 		"node": true
-	}
+	},
+	"overrides": [
+		{
+			"files": [
+				"*.config.js",
+				"jest.config.js"
+			],
+			"parser": "@babel/eslint-parser",
+			"parserOptions": {
+				"requireConfigFile": false,
+				"babelOptions": {
+					"parserOpts": {
+						"plugins": [
+							"jsx"
+						]
+					}
+				}
+			}
+		}
+	]
 }
