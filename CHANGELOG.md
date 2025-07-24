@@ -1,3 +1,11 @@
+## [1.1.2](https://github.com/jwulf/camunda-process-test-js/compare/v1.1.1...v1.1.2) (2025-07-24)
+
+
+### Bug Fixes
+
+* fix install command in README ([24cb115](https://github.com/jwulf/camunda-process-test-js/commit/24cb1157d41ffa6a2cab3985601c8bc00e728610))
+* update semantic release config ([7de4432](https://github.com/jwulf/camunda-process-test-js/commit/7de4432225388430ee295619519e21cac5ebd091))
+
 ## [1.1.1](https://github.com/jwulf/camunda-process-test-js/compare/v1.1.0...v1.1.1) (2025-07-24)
 
 
