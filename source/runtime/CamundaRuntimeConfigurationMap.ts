@@ -3,7 +3,7 @@
  *
  * This file contains all configurable parameters for the Camunda Process Test runtime.
  * Each configuration property defines:
- * - jsonKey: The key used in the camunda-container-runtime.json file
+ * - jsonKey: The key used in the camunda-test-config.json file
  * - envKey: The environment variable name that overrides the JSON configuration
  * - defaultValue: The default value if neither JSON nor environment variable is set
  * - description: Human-readable description of the configuration property
@@ -93,6 +93,69 @@ export const CAMUNDA_RUNTIME_CONFIGURATION = {
 		defaultValue: 'MANAGED' as 'MANAGED' | 'REMOTE',
 		description:
 			'Runtime mode: MANAGED (Docker containers) or REMOTE (existing instance)',
+	},
+
+	// Remote Connection Configuration
+	zeebeClientId: {
+		jsonKey: 'zeebeClientId',
+		envKey: 'ZEEBE_CLIENT_ID',
+		defaultValue: '',
+		description:
+			'Client ID for OAuth authentication with remote Camunda instance',
+	},
+
+	zeebeClientSecret: {
+		jsonKey: 'zeebeClientSecret',
+		envKey: 'ZEEBE_CLIENT_SECRET',
+		defaultValue: '',
+		description:
+			'Client secret for OAuth authentication with remote Camunda instance',
+	},
+
+	camundaOauthUrl: {
+		jsonKey: 'camundaOauthUrl',
+		envKey: 'CAMUNDA_OAUTH_URL',
+		defaultValue: '',
+		description: 'OAuth URL for authentication with remote Camunda instance',
+	},
+
+	zeebeRestAddress: {
+		jsonKey: 'zeebeRestAddress',
+		envKey: 'ZEEBE_REST_ADDRESS',
+		defaultValue: '',
+		description: 'REST API address for remote Zeebe instance',
+	},
+
+	zeebeTokenAudience: {
+		jsonKey: 'zeebeTokenAudience',
+		envKey: 'ZEEBE_TOKEN_AUDIENCE',
+		defaultValue: '',
+		description: 'Token audience for OAuth authentication',
+	},
+
+	camundaAuthStrategy: {
+		jsonKey: 'camundaAuthStrategy',
+		envKey: 'CAMUNDA_AUTH_STRATEGY',
+		defaultValue: '',
+		description:
+			'Authentication strategy: OAUTH, NONE, or empty for auto-detection',
+	},
+
+	// Remote API Endpoints
+	camundaMonitoringApiAddress: {
+		jsonKey: 'camundaMonitoringApiAddress',
+		envKey: 'CAMUNDA_MONITORING_API_ADDRESS',
+		defaultValue: '',
+		description:
+			'Monitoring API address for remote Camunda instance (defaults to REST address on port 9600)',
+	},
+
+	connectorsRestApiAddress: {
+		jsonKey: 'connectorsRestApiAddress',
+		envKey: 'CONNECTORS_REST_API_ADDRESS',
+		defaultValue: '',
+		description:
+			'Connectors REST API address for remote instance (defaults to REST address on port 8085)',
 	},
 } as const
 

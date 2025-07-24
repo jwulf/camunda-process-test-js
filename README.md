@@ -126,7 +126,7 @@ Configure the testing framework via configuration file, environment variables, o
 
 ### Configuration File (Recommended)
 
-Create a `camunda-container-runtime.json` file in your project root to configure container images and runtime settings:
+Create a `camunda-test-config.json` file in your project root to configure container images and runtime settings:
 
 ```json
 {
@@ -149,12 +149,20 @@ Create a `camunda-container-runtime.json` file in your project root to configure
 | `connectorsDockerImageName` | Connectors container image name | `camunda/connectors-bundle` | `CONNECTORS_DOCKER_IMAGE_NAME` |
 | `connectorsDockerImageVersion` | Connectors container image version | `SNAPSHOT` | `CONNECTORS_DOCKER_IMAGE_VERSION` |
 | `runtimeMode` | Runtime mode (`MANAGED` or `REMOTE`) | `MANAGED` | `CAMUNDA_RUNTIME_MODE` |
+| `zeebeClientId` | Client ID for OAuth authentication | `""` | `ZEEBE_CLIENT_ID` |
+| `zeebeClientSecret` | Client secret for OAuth authentication | `""` | `ZEEBE_CLIENT_SECRET` |
+| `camundaOauthUrl` | OAuth URL for authentication | `""` | `CAMUNDA_OAUTH_URL` |
+| `zeebeRestAddress` | REST API address for remote Zeebe | `""` | `ZEEBE_REST_ADDRESS` |
+| `zeebeTokenAudience` | Token audience for OAuth | `""` | `ZEEBE_TOKEN_AUDIENCE` |
+| `camundaAuthStrategy` | Authentication strategy | `""` (auto-detect) | `CAMUNDA_AUTH_STRATEGY` |
+| `camundaMonitoringApiAddress` | Monitoring API address | Auto-calculated from REST address:9600 | `CAMUNDA_MONITORING_API_ADDRESS` |
+| `connectorsRestApiAddress` | Connectors API address | Auto-calculated from REST address:8085 | `CONNECTORS_REST_API_ADDRESS` |
 
 #### Configuration Priority
 
 The framework uses the following priority order for configuration:
 1. **Environment variables** (highest priority)
-2. **Configuration file** (`camunda-container-runtime.json`)
+2. **Configuration file** (`camunda-test-config.json`)
 3. **Framework defaults** (lowest priority)
 
 #### Example Configurations
@@ -174,15 +182,53 @@ The framework uses the following priority order for configuration:
 ```json
 {
   "camundaDockerImageName": "camunda/camunda",
-  "camundaDockerImageVersion": "8.6.5",
+  "camundaDockerImageVersion": "8.8.0",
   "runtimeMode": "MANAGED"
 }
 ```
 
+**C8Run example (auto-calculated APIs):**
+```json
+{
+  "runtimeMode": "REMOTE",
+  "zeebeRestAddress": "http://localhost:8080",
+  "camundaAuthStrategy": "NONE"
+}
+```
 **Remote runtime (existing Camunda instance):**
 ```json
 {
-  "runtimeMode": "REMOTE"
+  "runtimeMode": "REMOTE",
+  "zeebeRestAddress": "https://your-cluster.region.zeebe.camunda.io:443",
+  "zeebeClientId": "your-client-id",
+  "zeebeClientSecret": "your-client-secret",
+  "camundaOauthUrl": "https://login.cloud.camunda.io/oauth/token",
+  "zeebeTokenAudience": "zeebe.camunda.io"
+}
+```
+
+**SaaS example with explicit API addresses:**
+```json
+{
+  "runtimeMode": "REMOTE",
+  "zeebeRestAddress": "https://your-cluster.region.zeebe.camunda.io:443",
+  "zeebeClientId": "your-client-id",
+  "zeebeClientSecret": "your-client-secret",
+  "camundaOauthUrl": "https://login.cloud.camunda.io/oauth/token",
+  "zeebeTokenAudience": "zeebe.camunda.io",
+  "camundaMonitoringApiAddress": "https://your-cluster.region.zeebe.camunda.io:9600",
+  "connectorsRestApiAddress": "https://your-cluster.region.zeebe.camunda.io:8085"
+}
+```
+
+**Self-managed example with custom ports:**
+```json
+{
+  "runtimeMode": "REMOTE",
+  "zeebeRestAddress": "http://camunda.mycompany.com:8080",
+  "camundaAuthStrategy": "NONE",
+  "camundaMonitoringApiAddress": "http://camunda.mycompany.com:9600",
+  "connectorsRestApiAddress": "http://connectors.mycompany.com:8085"
 }
 ```
 
@@ -195,7 +241,20 @@ Override configuration file settings or set additional options:
 CAMUNDA_DOCKER_IMAGE_VERSION=8.8.0-alpha6
 CAMUNDA_DOCKER_IMAGE_NAME=camunda/camunda
 CONNECTORS_DOCKER_IMAGE_VERSION=8.8.0-alpha6
-CAMUNDA_RUNTIME_MODE=MANAGED  # or REMOTE
+CAMUNDA_RUNTIME_MODE=MANAGED  
+
+# Remote runtime configuration (C8Run)
+ZEEBE_REST_ADDRESS=http://localhost:8080
+CAMUNDA_RUNTIME_MODE=REMOTE
+
+# Remote runtime configuration (SaaS)
+ZEEBE_REST_ADDRESS=https://your-cluster.region.zeebe.camunda.io:443
+ZEEBE_CLIENT_ID=your-client-id
+ZEEBE_CLIENT_SECRET=your-client-secret
+CAMUNDA_OAUTH_URL=https://login.cloud.camunda.io/oauth/token
+ZEEBE_TOKEN_AUDIENCE=zeebe.camunda.io
+CAMUNDA_AUTH_STRATEGY=OAUTH 
+CAMUNDA_RUNTIME_MODE=REMOTE
 
 # Runtime configuration  
 CAMUNDA_CONNECTORS_ENABLED=true
@@ -218,6 +277,53 @@ module.exports = {
   maxWorkers: 1, // Run tests sequentially to avoid container conflicts
 };
 ```
+
+## Remote Runtime Configuration
+
+The framework supports connecting to remote Camunda instances instead of managing local Docker containers. This is useful for testing against:
+
+- **C8Run** - Local development runtime
+- **Self-managed** - Your own Camunda installations
+- **Camunda SaaS** - Cloud-hosted Camunda instances
+
+### Authentication Strategies
+
+#### No Authentication (C8Run/Self-managed)
+For local or internal instances without authentication:
+```json
+{
+  "runtimeMode": "REMOTE",
+  "zeebeRestAddress": "http://localhost:8080",
+  "camundaAuthStrategy": "NONE"
+}
+```
+
+#### OAuth Authentication (SaaS)
+Required for Camunda SaaS instances:
+```json
+{
+  "runtimeMode": "REMOTE",
+  "zeebeRestAddress": "https://your-cluster.region.zeebe.camunda.io:443",
+  "zeebeClientId": "your-client-id",
+  "zeebeClientSecret": "your-client-secret",
+  "camundaOauthUrl": "https://login.cloud.camunda.io/oauth/token",
+  "zeebeTokenAudience": "zeebe.camunda.io"
+}
+```
+
+### API Address Auto-calculation
+
+The framework automatically calculates monitoring and connectors API addresses:
+- **Monitoring API**: REST address with port 9600
+- **Connectors API**: REST address with port 8085
+
+For `zeebeRestAddress: "https://example.com:443"`:
+- Monitoring API → `https://example.com:9600`
+- Connectors API → `https://example.com:8085`
+
+You can override these defaults by explicitly setting:
+- `camundaMonitoringApiAddress`
+- `connectorsRestApiAddress`
 
 ## Core API
 
@@ -415,7 +521,10 @@ await context.increaseTime({
 });
 ```
 
-**Note**: Time manipulation uses Zeebe's internal clock management API and requires the `ZEEBE_CLOCK_CONTROLLED=true` environment variable (automatically set by the framework).
+**Notes**: 
+
+* Time manipulation uses Zeebe's internal clock management API and requires the `ZEEBE_CLOCK_CONTROLLED=true` environment variable (automatically set by the framework).
+* Time manipulation is not available when testing against SaaS using the remote engine
 
 ## Debug Mode
 

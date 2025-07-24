@@ -1,12 +1,14 @@
 /**
  * Simple working example of Camunda Process Test
  */
+import Debug from 'debug'
 
 import { CamundaAssert, setupCamundaProcessTest } from '../source'
 
 // Function approach - simpler to start with
 const setup = setupCamundaProcessTest()
-
+const log = Debug('simple.test')
+log.enabled = true // Enable logging output
 describe('Simple Camunda Process Test', () => {
 	test('should deploy and run a simple process', async () => {
 		const client = setup.getClient()

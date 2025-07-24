@@ -4,9 +4,12 @@
  * This test demonstrates all the debug information available when running
  * Camunda Process Tests with debugging enabled.
  */
+import Debug from 'debug'
 
 import { CamundaAssert, setupCamundaProcessTest } from '../source'
 
+const log = Debug('debug.test')
+log.enabled = true // Enable logging output
 // Function approach with debugging
 const setup = setupCamundaProcessTest()
 
@@ -36,7 +39,7 @@ describe('Camunda Process Test - Debug Mode', () => {
 		const assertion = CamundaAssert.assertThat(processInstance)
 		await assertion.isCompleted()
 
-		console.log(
+		log(
 			'🎉 Test completed! Check the debug output above for detailed information.'
 		)
 	}, 180000) // Extended timeout for first-time container pulls
