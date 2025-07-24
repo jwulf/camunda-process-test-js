@@ -85,7 +85,7 @@ export class CamundaProcessTestRuntime {
 		// Log container status before capture
 		debugContainer('📊 Container status before shutdown:')
 		debugContainer(
-			'- Zeebe: %s',
+			'- Camunda: %s',
 			this.container ? 'Available' : 'Not available'
 		)
 		debugContainer(

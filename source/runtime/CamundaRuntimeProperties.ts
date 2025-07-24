@@ -1,8 +1,4 @@
-import fs from 'fs'
-import path from 'path'
-
-import Debug from 'debug'
-
+import { CamundaConfigurationDiscovery } from './CamundaConfigurationDiscovery'
 import {
 	CAMUNDA_RUNTIME_CONFIGURATION,
 	getConfigurationProperty,
@@ -12,8 +8,6 @@ import {
 	type ConfigurationProperty,
 	type PropertiesFromConfig,
 } from './CamundaRuntimeConfigurationMap'
-
-const debug = Debug('camunda:test:properties')
 
 // Derive properties interface from configuration map - make it flexible for runtime
 type Properties = {
@@ -156,38 +150,13 @@ export class ContainerRuntimePropertiesUtil implements Properties {
 
 	public static readProperties(): ContainerRuntimePropertiesUtil {
 		return new ContainerRuntimePropertiesUtil(
-			ContainerRuntimePropertiesUtil.readPropertiesFile()
+			CamundaConfigurationDiscovery.resolveConfiguration()
 		)
 	}
 
 	private static readPropertiesFile(): Partial<Properties> {
-		let properties: Partial<Properties> = {}
-		const projectRoot = getProjectRoot()
-		const configPath = path.join(
-			projectRoot,
-			ContainerRuntimePropertiesUtil.RUNTIME_PROPERTIES_FILE
-		)
-
-		try {
-			properties = JSON.parse(fs.readFileSync(configPath, 'utf-8'))
-			debug(`Loaded properties from ${configPath}`, properties)
-		} catch (e) {
-			console.warn(`Can't read properties file: ${configPath}`)
-		}
-		return properties
+		// This method is now deprecated - use CamundaConfigurationDiscovery instead
+		// Keeping for backward compatibility in case any tests directly call it
+		return CamundaConfigurationDiscovery.resolveConfiguration()
 	}
-}
-
-function getProjectRoot(): string {
-	// Start from current working directory
-	let currentDir = process.cwd()
-
-	while (currentDir !== path.parse(currentDir).root) {
-		if (fs.existsSync(path.join(currentDir, 'package.json'))) {
-			return currentDir
-		}
-		currentDir = path.dirname(currentDir)
-	}
-
-	throw new Error('Project root not found')
 }

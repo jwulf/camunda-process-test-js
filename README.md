@@ -1,6 +1,6 @@
 # Camunda Process Test for Node.js
 
-***THIS IS IN ACTIVE DEVELOPMENT AND NOT READY FOR USE YET***
+***THIS IS AN EARLY PREVIEW IN ACTIVE DEVELOPMENT***
 
 A comprehensive testing framework for Camunda process automation in Node.js/TypeScript, inspired by the Java `camunda-process-test-java` library.
 
@@ -26,9 +26,11 @@ npm install jest @types/jest --save-dev
 
 ## Prerequisites
 
-- **Docker Desktop** - Must be running for container management
-- **Node.js** - Version 18+ recommended
+- **Docker Desktop** - Must be running for container management in MANAGED mode
+- **Camunda 8 Run** - Can be used instead of Docker in REMOTE mode
+- **Node.js** - Version 20+
 - **Jest** - Version 29+ for test execution
+- **Camunda 8.8.0-alpha6** - Minimum version for test execution (uses search APIs)
 
 ## Quick Start
 
@@ -121,32 +123,70 @@ class MyProcessTest {
 
 ## Configuration
 
-Configure the testing framework via configuration file, environment variables, and Jest configuration.
+Configure the testing framework via configuration files, environment variables, and Jest configuration.
 
-### Configuration File (Recommended)
+### Configuration Discovery
 
-Create a `camunda-test-config.json` file in your project root to configure container images and runtime settings:
+The framework supports **simple configuration discovery** with two methods:
+
+1. **Project root discovery** (default): Searches for `camunda-test-config.json` at the project root
+2. **Environment variable override**: Use `CAMUNDA_TEST_CONFIG_FILE` to specify a custom config file
+
+#### Configuration Priority
+
+The framework uses the following priority order:
+1. **Environment variables** (highest priority) - Override individual properties
+2. **CAMUNDA_TEST_CONFIG_FILE override** - Specify custom config file path
+3. **Project root configuration** - Default `camunda-test-config.json` at project root
+4. **Framework defaults** (lowest priority)
+
+#### Basic Configuration
+
+Create a `camunda-test-config.json` file in your project root or test directory:
 
 ```json
 {
-  "camundaVersion": "8.7.0",
   "camundaDockerImageName": "camunda/camunda",
-  "camundaDockerImageVersion": "8.8.0-alpha6",
+  "camundaDockerImageVersion": "8.8.0",
   "connectorsDockerImageName": "camunda/connectors-bundle",
-  "connectorsDockerImageVersion": "8.8.0-alpha6",
+  "connectorsDockerImageVersion": "8.8.0",
   "runtimeMode": "MANAGED"
 }
+```
+
+#### Configuration Examples
+
+**Project Structure with Configuration:**
+```bash
+my-project/
+├── camunda-test-config.json          # Main configuration file
+├── configs/                          # Matrix testing configs
+│   ├── v8.8.0.json                   # Version-specific
+│   ├── v8.8.1.json
+│   ├── staging.json                  # Environment-specific
+│   └── production.json
+├── package.json
+└── test/
+    └── shared-tests/                  # Tests that run against all configs
+        └── common.test.ts
+```
+
+**Matrix Testing Examples:**
+```bash
+# Test against different configurations using environment variable
+CAMUNDA_TEST_CONFIG_FILE=configs/v8.8.0.json npm test
+CAMUNDA_TEST_CONFIG_FILE=configs/v8.8.1.json npm test
+CAMUNDA_TEST_CONFIG_FILE=configs/staging.json npm test
 ```
 
 #### Configuration Properties
 
 | Property | Description | Default | Environment Variable |
 |----------|-------------|---------|---------------------|
-| `camundaVersion` | Camunda platform version | `SNAPSHOT` | `CAMUNDA_DOCKER_IMAGE_VERSION` |
 | `camundaDockerImageName` | Zeebe container image name | `camunda/camunda` | `CAMUNDA_DOCKER_IMAGE_NAME` |
-| `camundaDockerImageVersion` | Zeebe container image version | `SNAPSHOT` | `CAMUNDA_DOCKER_IMAGE_VERSION` |
+| `camundaDockerImageVersion` | Zeebe container image version | `8.8.0` | `CAMUNDA_DOCKER_IMAGE_VERSION` |
 | `connectorsDockerImageName` | Connectors container image name | `camunda/connectors-bundle` | `CONNECTORS_DOCKER_IMAGE_NAME` |
-| `connectorsDockerImageVersion` | Connectors container image version | `SNAPSHOT` | `CONNECTORS_DOCKER_IMAGE_VERSION` |
+| `connectorsDockerImageVersion` | Connectors container image version | `8.8.0` | `CONNECTORS_DOCKER_IMAGE_VERSION` |
 | `runtimeMode` | Runtime mode (`MANAGED` or `REMOTE`) | `MANAGED` | `CAMUNDA_RUNTIME_MODE` |
 | `zeebeClientId` | Client ID for OAuth authentication | `""` | `ZEEBE_CLIENT_ID` |
 | `zeebeClientSecret` | Client secret for OAuth authentication | `""` | `ZEEBE_CLIENT_SECRET` |
@@ -156,13 +196,24 @@ Create a `camunda-test-config.json` file in your project root to configure conta
 | `camundaAuthStrategy` | Authentication strategy | `""` (auto-detect) | `CAMUNDA_AUTH_STRATEGY` |
 | `camundaMonitoringApiAddress` | Monitoring API address | Auto-calculated from REST address:9600 | `CAMUNDA_MONITORING_API_ADDRESS` |
 | `connectorsRestApiAddress` | Connectors API address | Auto-calculated from REST address:8085 | `CONNECTORS_REST_API_ADDRESS` |
+| `testScope` | Test organization hint | `""` | - |
+| `description` | Human-readable description | `""` | - |
 
-#### Configuration Priority
+#### Configuration Discovery Details
 
-The framework uses the following priority order for configuration:
-1. **Environment variables** (highest priority)
-2. **Configuration file** (`camunda-test-config.json`)
-3. **Framework defaults** (lowest priority)
+**Project Root Discovery:**
+The framework finds the project root by searching up the directory tree for `package.json`, then looks for `camunda-test-config.json` in that directory.
+
+**Environment Variable Override:**
+Set `CAMUNDA_TEST_CONFIG_FILE` to the path of any configuration file (relative to project root or absolute path). This completely bypasses the default project root discovery.
+
+```bash
+# Relative to project root
+CAMUNDA_TEST_CONFIG_FILE=configs/staging.json npm test
+
+# Absolute path
+CAMUNDA_TEST_CONFIG_FILE=/path/to/config.json npm test
+```
 
 #### Example Configurations
 
@@ -260,9 +311,95 @@ CAMUNDA_CONNECTORS_ENABLED=true
 
 # Debug settings
 DEBUG=camunda:*  # Enable debug logging
+
+# Matrix testing override
+CAMUNDA_TEST_CONFIG_FILE=configs/staging.json  # Use specific config file
 ```
 
-### Jest Configuration
+### CI/CD Matrix Testing
+
+The framework supports powerful matrix testing capabilities for CI/CD pipelines using the `CAMUNDA_TEST_CONFIG_FILE` environment variable to specify different configuration files.
+
+#### GitHub Actions Matrix Example
+
+```yaml
+name: Matrix Testing
+on: [push, pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        config:
+          - configs/v8.8.0.json
+          - configs/v8.8.1.json
+          - configs/v8.9.0.json
+          - configs/staging.json
+          - configs/production.json
+    
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Run tests with specific config
+        env:
+          CAMUNDA_TEST_CONFIG_FILE: ${{ matrix.config }}
+        run: npm test
+```
+
+#### Configuration Files for Matrix Testing
+
+**configs/v8.8.0.json** - Version-specific testing
+```json
+{
+  "description": "Camunda 8.8.0 testing",
+  "camundaDockerImageVersion": "8.8.0",
+  "connectorsDockerImageVersion": "8.8.0",
+  "runtimeMode": "MANAGED"
+}
+```
+
+**configs/staging.json** - Environment-specific testing
+```json
+{
+  "description": "Staging environment testing",
+  "runtimeMode": "REMOTE",
+  "zeebeRestAddress": "https://staging.company.com:8080",
+  "camundaAuthStrategy": "NONE"
+}
+```
+
+**configs/production.json** - Production validation
+```json
+{
+  "description": "Production environment validation",
+  "runtimeMode": "REMOTE",
+  "zeebeRestAddress": "https://prod.company.com:8080",
+  "zeebeClientId": "${PROD_CLIENT_ID}",
+  "zeebeClientSecret": "${PROD_CLIENT_SECRET}",
+  "camundaOauthUrl": "https://login.cloud.camunda.io/oauth/token"
+}
+```
+
+#### Local Matrix Testing
+
+```bash
+# Test against different configurations locally
+for config in configs/*.json; do
+  echo "Testing with $config"
+  CAMUNDA_TEST_CONFIG_FILE="$config" npm test
+done
+
+# Test specific combinations
+CAMUNDA_TEST_CONFIG_FILE=configs/v8.8.0.json npm run test:integration
+CAMUNDA_TEST_CONFIG_FILE=configs/staging.json npm run test:e2e
+```
 
 Jest configuration in `jest.config.js`:
 
