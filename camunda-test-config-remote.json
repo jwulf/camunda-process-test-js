@@ -1,0 +1,4 @@
+{
+    "runtimeMode": "REMOTE",
+    "zeebeAddress": "http://localhost:8080"
+}

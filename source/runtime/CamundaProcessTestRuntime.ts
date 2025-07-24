@@ -18,6 +18,31 @@ const log = Debug('camunda:test')
 log.enabled = true
 
 /**
+ * Calculate default API address from REST address with specified port.
+ */
+function calculateDefaultApiAddress(
+	restAddress: string,
+	defaultPort: number
+): string {
+	try {
+		const url = new URL(restAddress)
+		return `${url.protocol}//${url.hostname}:${defaultPort}`
+	} catch (error) {
+		throw new Error(`Invalid REST address format: ${restAddress}`)
+	}
+}
+
+/**
+ * Auto-detect authentication strategy based on configuration.
+ */
+function detectAuthStrategy(config: CamundaRuntimeConfiguration): string {
+	if (config.camundaAuthStrategy) {
+		return config.camundaAuthStrategy
+	}
+	return config.camundaOauthUrl ? 'OAUTH' : 'NONE'
+}
+
+/**
  * Manages the Camunda runtime for testing.
  * Supports both container-managed and remote runtime modes.
  */
@@ -25,6 +50,8 @@ export class CamundaProcessTestRuntime {
 	private container?: StartedTestContainer
 	private connectorsContainer?: StartedTestContainer
 	private gatewayAddress?: string
+	private remoteMonitoringApiAddress?: string
+	private remoteConnectorsApiAddress?: string
 
 	private static DEFAULT_READINESS_TIMEOUT = 10000
 	private config: CamundaRuntimeConfiguration
@@ -93,14 +120,40 @@ export class CamundaProcessTestRuntime {
 
 		log('🔌 Creating Camunda client for gateway: %s', this.gatewayAddress)
 
-		const client = new Camunda8({
+		// Build client configuration based on runtime mode
+		const clientConfig: Record<string, string> = {
 			ZEEBE_REST_ADDRESS: this.gatewayAddress.startsWith('http')
 				? this.gatewayAddress
 				: `http://${this.gatewayAddress}`,
 			CAMUNDA_LOG_LEVEL: (process.env.CAMUNDA_LOG_LEVEL as 'none') ?? 'none', // Disable Camunda logs by default
-			CAMUNDA_AUTH_STRATEGY:
-				(process.env.CAMUNDA_AUTH_STRATEGY as 'NONE') || 'NONE',
-		})
+		}
+
+		if (this.config.runtimeMode === 'REMOTE') {
+			// Use remote configuration
+			const authStrategy = detectAuthStrategy(this.config)
+			clientConfig.CAMUNDA_AUTH_STRATEGY = authStrategy
+
+			if (authStrategy === 'OAUTH') {
+				if (this.config.zeebeClientId) {
+					clientConfig.ZEEBE_CLIENT_ID = this.config.zeebeClientId
+				}
+				if (this.config.zeebeClientSecret) {
+					clientConfig.ZEEBE_CLIENT_SECRET = this.config.zeebeClientSecret
+				}
+				if (this.config.camundaOauthUrl) {
+					clientConfig.CAMUNDA_OAUTH_URL = this.config.camundaOauthUrl
+				}
+				if (this.config.zeebeTokenAudience) {
+					clientConfig.ZEEBE_TOKEN_AUDIENCE = this.config.zeebeTokenAudience
+				}
+			}
+		} else {
+			// Use local configuration for managed mode
+			clientConfig.CAMUNDA_AUTH_STRATEGY =
+				(process.env.CAMUNDA_AUTH_STRATEGY as 'NONE') || 'NONE'
+		}
+
+		const client = new Camunda8(clientConfig)
 
 		log('✅ Camunda client created successfully')
 		return client
@@ -114,6 +167,9 @@ export class CamundaProcessTestRuntime {
 	}
 
 	getConnectorsAddress(): string | undefined {
+		if (this.config.runtimeMode === 'REMOTE') {
+			return this.remoteConnectorsApiAddress
+		}
 		if (this.connectorsContainer) {
 			const port = this.connectorsContainer.getMappedPort(8080)
 			return `http://localhost:${port}`
@@ -129,6 +185,17 @@ export class CamundaProcessTestRuntime {
 	}
 
 	getMonitoringApiPort(): number {
+		if (this.config.runtimeMode === 'REMOTE') {
+			if (this.remoteMonitoringApiAddress) {
+				try {
+					const url = new URL(this.remoteMonitoringApiAddress)
+					return parseInt(url.port) || (url.protocol === 'https:' ? 443 : 80)
+				} catch {
+					return 9600 // Default monitoring port
+				}
+			}
+			return 9600
+		}
 		if (!this.container) {
 			throw new Error('Container not available - runtime not started')
 		}
@@ -138,6 +205,12 @@ export class CamundaProcessTestRuntime {
 	}
 
 	getMonitoringApiAddress(): string {
+		if (this.config.runtimeMode === 'REMOTE') {
+			if (!this.remoteMonitoringApiAddress) {
+				throw new Error('Remote monitoring API address not available')
+			}
+			return this.remoteMonitoringApiAddress
+		}
 		if (!this.container) {
 			throw new Error('Container not available - runtime not started')
 		}
@@ -150,8 +223,52 @@ export class CamundaProcessTestRuntime {
 
 	private async startRemoteMode(): Promise<void> {
 		debug('Starting in remote mode')
-		this.gatewayAddress =
-			this.config.remote?.gatewayAddress || 'localhost:26500'
+
+		// Validate required configuration
+		if (!this.config.zeebeRestAddress) {
+			throw new Error(
+				'ZEEBE_REST_ADDRESS is required when using REMOTE runtime mode'
+			)
+		}
+
+		// Validate OAuth configuration if using OAuth strategy
+		const authStrategy = detectAuthStrategy(this.config)
+		if (authStrategy === 'OAUTH') {
+			if (!this.config.zeebeClientId) {
+				throw new Error(
+					'ZEEBE_CLIENT_ID is required when using OAuth authentication'
+				)
+			}
+			if (!this.config.zeebeClientSecret) {
+				throw new Error(
+					'ZEEBE_CLIENT_SECRET is required when using OAuth authentication'
+				)
+			}
+			if (!this.config.camundaOauthUrl) {
+				throw new Error(
+					'CAMUNDA_OAUTH_URL is required when using OAuth authentication'
+				)
+			}
+		}
+
+		// Set gateway address
+		this.gatewayAddress = this.config.zeebeRestAddress
+
+		// Calculate default monitoring API address
+		this.remoteMonitoringApiAddress =
+			this.config.camundaMonitoringApiAddress ||
+			calculateDefaultApiAddress(this.config.zeebeRestAddress, 9600)
+
+		// Calculate default connectors API address
+		this.remoteConnectorsApiAddress =
+			this.config.connectorsRestApiAddress ||
+			calculateDefaultApiAddress(this.config.zeebeRestAddress, 8085)
+
+		log('📡 Remote mode configuration:')
+		log('  Gateway: %s', this.gatewayAddress)
+		log('  Monitoring API: %s', this.remoteMonitoringApiAddress)
+		log('  Connectors API: %s', this.remoteConnectorsApiAddress)
+		log('  Auth Strategy: %s', authStrategy)
 	}
 
 	private async startManagedMode(): Promise<void> {

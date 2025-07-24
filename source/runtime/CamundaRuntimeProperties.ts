@@ -8,8 +8,8 @@ import {
 	getConfigurationProperty,
 	getSimpleProperties,
 	getVersionResolverProperties,
-	type ConfigurationProperty,
 	type CamundaRuntimeConfigType,
+	type ConfigurationProperty,
 	type PropertiesFromConfig,
 } from './CamundaRuntimeConfigurationMap'
 
@@ -25,7 +25,7 @@ type Properties = {
 }
 
 export class ContainerRuntimePropertiesUtil implements Properties {
-	public static RUNTIME_PROPERTIES_FILE = 'camunda-container-runtime.json'
+	public static RUNTIME_PROPERTIES_FILE = 'camunda-test-config.json'
 	public static SNAPSHOT_VERSION = 'SNAPSHOT' as const
 
 	private static PLACEHOLDER_PATTERN = /\$\{.*\}/
@@ -37,6 +37,15 @@ export class ContainerRuntimePropertiesUtil implements Properties {
 	public connectorsDockerImageName!: Properties['connectorsDockerImageName']
 	public connectorsDockerImageVersion!: Properties['connectorsDockerImageVersion']
 	public runtimeMode!: Properties['runtimeMode']
+	// Remote connection properties
+	public zeebeClientId!: Properties['zeebeClientId']
+	public zeebeClientSecret!: Properties['zeebeClientSecret']
+	public camundaOauthUrl!: Properties['camundaOauthUrl']
+	public zeebeRestAddress!: Properties['zeebeRestAddress']
+	public zeebeTokenAudience!: Properties['zeebeTokenAudience']
+	public camundaAuthStrategy!: Properties['camundaAuthStrategy']
+	public camundaMonitoringApiAddress!: Properties['camundaMonitoringApiAddress']
+	public connectorsRestApiAddress!: Properties['connectorsRestApiAddress']
 
 	constructor(properties: Partial<Properties> = {}) {
 		// Initialize all properties dynamically using the configuration map

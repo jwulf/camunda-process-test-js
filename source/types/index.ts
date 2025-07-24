@@ -42,6 +42,15 @@ export interface CamundaRuntimeConfiguration {
 	connectorsEnvVars?: Record<string, string>
 	connectorsSecrets?: Record<string, string>
 	runtimeMode?: 'MANAGED' | 'REMOTE'
+	// Remote connection properties
+	zeebeClientId?: string
+	zeebeClientSecret?: string
+	camundaOauthUrl?: string
+	zeebeRestAddress?: string
+	zeebeTokenAudience?: string
+	camundaAuthStrategy?: string
+	camundaMonitoringApiAddress?: string
+	connectorsRestApiAddress?: string
 	remote?: {
 		gatewayAddress?: string
 		camundaMonitoringApiAddress?: string
