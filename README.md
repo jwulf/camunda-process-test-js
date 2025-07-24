@@ -45,7 +45,7 @@ describe('Order Process', () => {
   const setup = setupCamundaProcessTest();
 
   test('should complete order successfully', async () => {
-    const client = setup.getClient();
+    const client = setup.getClient().getCamundaRestClient();
     const context = setup.getContext();
 
     // Deploy process
@@ -59,8 +59,7 @@ describe('Order Process', () => {
       .thenComplete({ tracking: 'TR123456' });
 
     // Start process instance
-    const camunda = client.getCamundaRestClient();
-    const processInstance = await camunda.createProcessInstance({
+    const processInstance = await client.createProcessInstance({
       processDefinitionId: 'order-process',
       variables: { orderId: 'order-123', amount: 99.99 }
     });
@@ -122,7 +121,7 @@ class MyProcessTest {
 
 ## Configuration
 
-Configure the testing framework via configuration file, environment variables, or Jest configuration.
+Configure the testing framework via configuration file, environment variables, and Jest configuration.
 
 ### Configuration File (Recommended)
 
@@ -269,14 +268,17 @@ Jest configuration in `jest.config.js`:
 
 ```javascript
 module.exports = {
-  preset: 'ts-jest',
+  preset: 'ts-jest', // If you are testing TypeScript
   testEnvironment: 'node',
-  testTimeout: 120000, // 2 minutes for container startup
+  // Global timeout - will be overridden per test as needed
+  testTimeout: process.env.CI ? 300000 : 30000,
   detectOpenHandles: true,
   forceExit: true,
   maxWorkers: 1, // Run tests sequentially to avoid container conflicts
 };
 ```
+
+Essential is to set the test timeout high enough to pull and start the container if you are running in MANAGED mode.
 
 ## Remote Runtime Configuration
 

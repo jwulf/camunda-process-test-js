@@ -5,7 +5,6 @@ import { CamundaAssert } from '../assertions/CamundaAssert'
 import { CamundaProcessTestContext } from '../runtime/CamundaProcessTestContext'
 import { CamundaProcessTestRuntime } from '../runtime/CamundaProcessTestRuntime'
 import { ContainerRuntimePropertiesUtil } from '../runtime/CamundaRuntimeProperties'
-import { JestTimeoutDetector } from '../runtime/JestTimeoutDetector'
 import { CamundaRuntimeConfiguration } from '../types'
 
 const debug = Debug('camunda:test:extension')
@@ -26,14 +25,6 @@ export class CamundaProcessTestExtension {
 		// Validate Jest timeout if in Jest environment and using MANAGED mode
 		const runtimeConfig: CamundaRuntimeConfiguration =
 			ContainerRuntimePropertiesUtil.readProperties()
-
-		if (
-			JestTimeoutDetector.isJestEnvironment() &&
-			runtimeConfig.runtimeMode === 'MANAGED'
-		) {
-			debug('🕒 Validating Jest timeout for container operations...')
-			await JestTimeoutDetector.validateJestTimeout()
-		}
 
 		// Initialize runtime
 		debug('🚀 Initializing Camunda runtime...')

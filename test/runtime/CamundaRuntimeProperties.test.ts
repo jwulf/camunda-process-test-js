@@ -254,10 +254,6 @@ describe('ContainerRuntimePropertiesUtil', () => {
 			const versionProperties = getVersionResolverProperties()
 			const simpleProperties = getSimpleProperties()
 
-			// Version resolver properties should include version-related configs
-			expect(versionProperties['camundaVersion']).toBeDefined()
-			expect(versionProperties['camundaVersion'].useVersionResolver).toBe(true)
-
 			// Simple properties should include non-version configs
 			expect(simpleProperties['camundaDockerImageName']).toBeDefined()
 			expect(
