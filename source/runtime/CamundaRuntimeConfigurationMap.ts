@@ -45,28 +45,19 @@ export type PropertyType<T extends ConfigurationMap, K extends keyof T> =
  * 2. The types will be automatically derived for CamundaRuntimeProperties
  */
 export const CAMUNDA_RUNTIME_CONFIGURATION = {
-	// Camunda Version Configuration
-	camundaVersion: {
-		jsonKey: 'camundaVersion',
-		envKey: 'CAMUNDA_DOCKER_IMAGE_VERSION',
-		defaultValue: 'SNAPSHOT',
-		description: 'Version of Camunda platform to use',
-		useVersionResolver: true,
-	},
-
 	// Camunda Docker Image Configuration
 	camundaDockerImageName: {
 		jsonKey: 'camundaDockerImageName',
 		envKey: 'CAMUNDA_DOCKER_IMAGE_NAME',
 		defaultValue: 'camunda/camunda',
-		description: 'Docker image name for Camunda/Zeebe container',
+		description: 'Docker image name for Camunda container',
 	},
 
 	camundaDockerImageVersion: {
 		jsonKey: 'camundaDockerImageVersion',
 		envKey: 'CAMUNDA_DOCKER_IMAGE_VERSION',
 		defaultValue: 'SNAPSHOT',
-		description: 'Docker image version for Camunda/Zeebe container',
+		description: 'Docker image version for Camunda container',
 		useVersionResolver: true,
 	},
 

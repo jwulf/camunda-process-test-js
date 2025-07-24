@@ -50,7 +50,6 @@ describe('CamundaRuntimeConfigurationMap', () => {
 		it('should categorize version resolver properties correctly', () => {
 			const versionProperties = getVersionResolverProperties()
 			const expectedVersionProperties = [
-				'camundaVersion',
 				'camundaDockerImageVersion',
 				'connectorsDockerImageVersion',
 			]

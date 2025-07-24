@@ -31,7 +31,6 @@ export class ContainerRuntimePropertiesUtil implements Properties {
 	private static PLACEHOLDER_PATTERN = /\$\{.*\}/
 
 	// Dynamic property declarations - these are generated at runtime
-	public camundaVersion!: Properties['camundaVersion']
 	public camundaDockerImageName!: Properties['camundaDockerImageName']
 	public camundaDockerImageVersion!: Properties['camundaDockerImageVersion']
 	public connectorsDockerImageName!: Properties['connectorsDockerImageName']
