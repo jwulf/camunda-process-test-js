@@ -56,8 +56,8 @@ export const CAMUNDA_RUNTIME_CONFIGURATION = {
 	camundaDockerImageVersion: {
 		jsonKey: 'camundaDockerImageVersion',
 		envKey: 'CAMUNDA_DOCKER_IMAGE_VERSION',
-		defaultValue: 'SNAPSHOT',
-		description: 'Docker image version for Camunda container',
+		defaultValue: '8.8.0',
+		description: 'Docker image version for Camunda container (minimum 8.8.0)',
 		useVersionResolver: true,
 	},
 
@@ -72,8 +72,9 @@ export const CAMUNDA_RUNTIME_CONFIGURATION = {
 	connectorsDockerImageVersion: {
 		jsonKey: 'connectorsDockerImageVersion',
 		envKey: 'CONNECTORS_DOCKER_IMAGE_VERSION',
-		defaultValue: 'SNAPSHOT',
-		description: 'Docker image version for Connectors container',
+		defaultValue: '8.8.0',
+		description:
+			'Docker image version for Connectors container (minimum 8.8.0)',
 		useVersionResolver: true,
 	},
 

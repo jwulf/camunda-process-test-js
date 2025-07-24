@@ -204,11 +204,11 @@ describe('ContainerRuntimePropertiesUtil', () => {
 			const properties = new ContainerRuntimePropertiesUtil({})
 
 			expect(properties.camundaDockerImageName).toBe('camunda/camunda')
-			expect(properties.camundaDockerImageVersion).toBe('SNAPSHOT')
+			expect(properties.camundaDockerImageVersion).toBe('8.8.0')
 			expect(properties.connectorsDockerImageName).toBe(
 				'camunda/connectors-bundle'
 			)
-			expect(properties.connectorsDockerImageVersion).toBe('SNAPSHOT')
+			expect(properties.connectorsDockerImageVersion).toBe('8.8.0')
 			expect(properties.runtimeMode).toBe('MANAGED')
 		})
 
