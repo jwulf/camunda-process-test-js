@@ -18,7 +18,7 @@ A comprehensive testing framework for Camunda process automation in Node.js/Type
 ## Installation
 
 ```bash
-npm install @camunda/process-test-node --save-dev
+npm install @camunda8/process-test-node --save-dev
 
 # Peer dependencies
 npm install jest @types/jest --save-dev
