@@ -1,3 +1,10 @@
+# [1.3.0](https://github.com/jwulf/camunda-process-test-js/compare/v1.2.1...v1.3.0) (2025-07-24)
+
+
+### Features
+
+* allow config file to specified via env. Fixes [#13](https://github.com/jwulf/camunda-process-test-js/issues/13) ([9a3e7d0](https://github.com/jwulf/camunda-process-test-js/commit/9a3e7d0231f020ace72f646efa9b7a05db0f62f2))
+
 ## [1.2.1](https://github.com/jwulf/camunda-process-test-js/compare/v1.2.0...v1.2.1) (2025-07-24)
 
 
