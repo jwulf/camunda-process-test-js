@@ -1,3 +1,10 @@
+# [1.1.0](https://github.com/jwulf/camunda-process-test-js/compare/v1.0.1...v1.1.0) (2025-07-24)
+
+
+### Features
+
+* implement remote engine support. fixes [#1](https://github.com/jwulf/camunda-process-test-js/issues/1) ([155b10b](https://github.com/jwulf/camunda-process-test-js/commit/155b10b74bf5475c25b054ec1d188293386fba07))
+
 ## [1.0.1](https://github.com/jwulf/camunda-process-test-js/compare/v1.0.0...v1.0.1) (2025-07-23)
 
 
