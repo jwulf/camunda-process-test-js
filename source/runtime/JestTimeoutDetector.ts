@@ -123,7 +123,7 @@ export class JestTimeoutDetector {
 			console.warn(
 				'📝 Consider updating your Jest configuration for more reliable tests.'
 			)
-			
+
 			// Don't throw error - just warn. Let the user decide.
 			// The actual container startup will fail with a more specific error if needed.
 		}
@@ -146,7 +146,7 @@ export class JestTimeoutDetector {
 
 	private static async parseJestConfig(): Promise<number> {
 		const configPath = path.join(process.cwd(), 'jest.config.js')
-		
+
 		if (!fs.existsSync(configPath)) {
 			debug('📄 jest.config.js not found at: %s', configPath)
 			return 0
@@ -157,10 +157,10 @@ export class JestTimeoutDetector {
 			delete require.cache[require.resolve(configPath)]
 			// eslint-disable-next-line @typescript-eslint/no-var-requires
 			const config = require(configPath)
-			
+
 			// Handle both direct export and module.exports
 			const jestConfig = typeof config === 'function' ? config() : config
-			
+
 			if (jestConfig.testTimeout) {
 				return jestConfig.testTimeout
 			}
@@ -200,7 +200,7 @@ export class JestTimeoutDetector {
 		// In a real implementation, this could check Docker for cached images
 		const isCI = process.env.CI === 'true'
 		const debugMode = process.env.DEBUG?.includes('camunda')
-		
+
 		// Assume images aren't cached in CI or debug mode (conservative)
 		return !isCI && !debugMode
 	}
@@ -211,15 +211,15 @@ export class JestTimeoutDetector {
 	): string {
 		const timeoutSeconds = Math.ceil(requiredTimeout / 1000)
 		const isFirstRun = !this.isDockerImageCached()
-		
+
 		let message = `❌ Jest timeout (${currentTimeout}ms) is insufficient for container startup.\n\n`
-		
+
 		message += `🔧 Required minimum timeout: ${requiredTimeout}ms (${timeoutSeconds} seconds)\n\n`
-		
+
 		if (isFirstRun) {
 			message += `📥 First run detected - Docker image download may take additional time.\n\n`
 		}
-		
+
 		message += `💡 To fix this, choose one of these options:\n\n`
 		message += `   1. Set test timeout in your test:\n`
 		message += `      test('your test', async () => { ... }, ${requiredTimeout})\n\n`
@@ -230,7 +230,7 @@ export class JestTimeoutDetector {
 		message += `   4. Use CLI flag:\n`
 		message += `      npm test -- --testTimeout=${requiredTimeout}\n\n`
 		message += `ℹ️  For REMOTE runtime mode, timeouts can be much lower (30-60 seconds).`
-		
+
 		return message
 	}
 }

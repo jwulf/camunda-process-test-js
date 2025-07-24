@@ -26,7 +26,7 @@ export class CamundaProcessTestExtension {
 		// Validate Jest timeout if in Jest environment and using MANAGED mode
 		const runtimeConfig: CamundaRuntimeConfiguration =
 			ContainerRuntimePropertiesUtil.readProperties()
-		
+
 		if (
 			JestTimeoutDetector.isJestEnvironment() &&
 			runtimeConfig.runtimeMode === 'MANAGED'
