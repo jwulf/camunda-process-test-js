@@ -1,3 +1,10 @@
+## [1.1.1](https://github.com/jwulf/camunda-process-test-js/compare/v1.1.0...v1.1.1) (2025-07-24)
+
+
+### Bug Fixes
+
+* correct package entry point ([17b733d](https://github.com/jwulf/camunda-process-test-js/commit/17b733de44fd187883be72ab9e5b1fb4479b2495))
+
 # [1.1.0](https://github.com/jwulf/camunda-process-test-js/compare/v1.0.1...v1.1.0) (2025-07-24)
 
 
