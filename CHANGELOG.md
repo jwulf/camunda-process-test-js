@@ -1,3 +1,10 @@
+## [1.2.1](https://github.com/jwulf/camunda-process-test-js/compare/v1.2.0...v1.2.1) (2025-07-24)
+
+
+### Bug Fixes
+
+* remove Jest timeout detection. fixes [#11](https://github.com/jwulf/camunda-process-test-js/issues/11) ([f808e9c](https://github.com/jwulf/camunda-process-test-js/commit/f808e9ce54179fee152b5eacf12f4c1917845899))
+
 # [1.2.0](https://github.com/jwulf/camunda-process-test-js/compare/v1.1.2...v1.2.0) (2025-07-24)
 
 
