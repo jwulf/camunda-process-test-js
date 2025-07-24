@@ -1,3 +1,10 @@
+# [1.2.0](https://github.com/jwulf/camunda-process-test-js/compare/v1.1.2...v1.2.0) (2025-07-24)
+
+
+### Features
+
+* detect and set jest timeout if it is insufficient. fixes [#9](https://github.com/jwulf/camunda-process-test-js/issues/9) ([c6487bd](https://github.com/jwulf/camunda-process-test-js/commit/c6487bd23574292db3c88eb4bb25bd47edabcd02))
+
 ## [1.1.2](https://github.com/jwulf/camunda-process-test-js/compare/v1.1.1...v1.1.2) (2025-07-24)
 
 
