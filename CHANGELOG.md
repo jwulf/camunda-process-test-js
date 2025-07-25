@@ -1,3 +1,10 @@
+# [1.4.0](https://github.com/jwulf/camunda-process-test-js/compare/v1.3.0...v1.4.0) (2025-07-25)
+
+
+### Features
+
+* support Zeebe gRPC API. fixes [#15](https://github.com/jwulf/camunda-process-test-js/issues/15) ([9c6ad58](https://github.com/jwulf/camunda-process-test-js/commit/9c6ad583ddedb27c6f1ded8321ef90d8e1df3c92))
+
 # [1.3.0](https://github.com/jwulf/camunda-process-test-js/compare/v1.2.1...v1.3.0) (2025-07-24)
 
 
