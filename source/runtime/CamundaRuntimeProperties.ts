@@ -15,7 +15,12 @@ type Properties = {
 		| 'MANAGED'
 		| 'REMOTE'
 		? 'MANAGED' | 'REMOTE'
-		: string
+		: PropertiesFromConfig<CamundaRuntimeConfigType>[K] extends
+					| 'SAAS'
+					| 'C8RUN'
+					| 'SELF_MANAGED'
+			? 'SAAS' | 'C8RUN' | 'SELF_MANAGED'
+			: string
 }
 
 export class ContainerRuntimePropertiesUtil implements Properties {
@@ -35,7 +40,9 @@ export class ContainerRuntimePropertiesUtil implements Properties {
 	public zeebeClientSecret!: Properties['zeebeClientSecret']
 	public camundaOauthUrl!: Properties['camundaOauthUrl']
 	public zeebeRestAddress!: Properties['zeebeRestAddress']
+	public zeebeGrpcAddress!: Properties['zeebeGrpcAddress']
 	public zeebeTokenAudience!: Properties['zeebeTokenAudience']
+	public zeebeClientLogLevel!: Properties['zeebeClientLogLevel']
 	public camundaAuthStrategy!: Properties['camundaAuthStrategy']
 	public camundaMonitoringApiAddress!: Properties['camundaMonitoringApiAddress']
 	public connectorsRestApiAddress!: Properties['connectorsRestApiAddress']

@@ -42,11 +42,13 @@ export interface CamundaRuntimeConfiguration {
 	connectorsEnvVars?: Record<string, string>
 	connectorsSecrets?: Record<string, string>
 	runtimeMode?: 'MANAGED' | 'REMOTE'
+	clusterType?: 'SAAS' | 'C8RUN' | 'SELF_MANAGED'
 	// Remote connection properties
 	zeebeClientId?: string
 	zeebeClientSecret?: string
 	camundaOauthUrl?: string
 	zeebeRestAddress?: string
+	zeebeGrpcAddress?: string
 	zeebeTokenAudience?: string
 	camundaAuthStrategy?: string
 	camundaMonitoringApiAddress?: string

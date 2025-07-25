@@ -1,3 +1,4 @@
 {
-    "camundaDockerImageVersion": "8.8.0-alpha6"
+    "camundaDockerImageVersion": "8.8.0-alpha6",
+    "description": "Managed mode with a specific container image version"
 }

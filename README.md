@@ -10,6 +10,7 @@ A comprehensive testing framework for Camunda process automation in Node.js/Type
 - 🐳 **Container Management**: Automatic Camunda/Zeebe container lifecycle management using TestContainers
 - 🔍 **Rich Assertions**: Fluent API for verifying process execution, user tasks, and decisions
 - 🎭 **Job Worker Mocking**: Powerful mocking capabilities for service tasks
+- 🔧 **gRPC Worker Support**: Test external workers connecting via Zeebe gRPC API
 - ⏰ **Time Control**: Full control over Zeebe's internal clock for testing timers and timeouts
 - 🔧 **TypeScript Support**: Full TypeScript support with type definitions
 - 🧪 **Jest Integration**: Seamless integration with Jest testing framework
@@ -192,7 +193,9 @@ CAMUNDA_TEST_CONFIG_FILE=configs/staging.json npm test
 | `zeebeClientSecret` | Client secret for OAuth authentication | `""` | `ZEEBE_CLIENT_SECRET` |
 | `camundaOauthUrl` | OAuth URL for authentication | `""` | `CAMUNDA_OAUTH_URL` |
 | `zeebeRestAddress` | REST API address for remote Zeebe | `""` | `ZEEBE_REST_ADDRESS` |
+| `zeebeGrpcAddress` | gRPC API address for remote Zeebe workers | Auto-derived from REST address | `ZEEBE_GRPC_ADDRESS` |
 | `zeebeTokenAudience` | Token audience for OAuth | `""` | `ZEEBE_TOKEN_AUDIENCE` |
+| `zeebeClientLogLevel` | gRPC client log level (NONE, ERROR, WARN, INFO, DEBUG) | `NONE` | `ZEEBE_CLIENT_LOG_LEVEL` |
 | `camundaAuthStrategy` | Authentication strategy | `""` (auto-detect) | `CAMUNDA_AUTH_STRATEGY` |
 | `camundaMonitoringApiAddress` | Monitoring API address | Auto-calculated from REST address:9600 | `CAMUNDA_MONITORING_API_ADDRESS` |
 | `connectorsRestApiAddress` | Connectors API address | Auto-calculated from REST address:8085 | `CONNECTORS_REST_API_ADDRESS` |
@@ -242,6 +245,7 @@ CAMUNDA_TEST_CONFIG_FILE=/path/to/config.json npm test
 {
   "runtimeMode": "REMOTE",
   "zeebeRestAddress": "http://localhost:8080",
+  "zeebeGrpcAddress": "grpc://localhost:26500",
   "camundaAuthStrategy": "NONE"
 }
 ```
@@ -250,6 +254,7 @@ CAMUNDA_TEST_CONFIG_FILE=/path/to/config.json npm test
 {
   "runtimeMode": "REMOTE",
   "zeebeRestAddress": "https://your-cluster.region.zeebe.camunda.io:443",
+  "zeebeGrpcAddress": "grpcs://your-cluster.region.zeebe.camunda.io:443",
   "zeebeClientId": "your-client-id",
   "zeebeClientSecret": "your-client-secret",
   "camundaOauthUrl": "https://login.cloud.camunda.io/oauth/token",
@@ -262,6 +267,7 @@ CAMUNDA_TEST_CONFIG_FILE=/path/to/config.json npm test
 {
   "runtimeMode": "REMOTE",
   "zeebeRestAddress": "https://your-cluster.region.zeebe.camunda.io:443",
+  "zeebeGrpcAddress": "grpcs://your-cluster.region.zeebe.camunda.io:443",
   "zeebeClientId": "your-client-id",
   "zeebeClientSecret": "your-client-secret",
   "camundaOauthUrl": "https://login.cloud.camunda.io/oauth/token",
@@ -276,6 +282,7 @@ CAMUNDA_TEST_CONFIG_FILE=/path/to/config.json npm test
 {
   "runtimeMode": "REMOTE",
   "zeebeRestAddress": "http://camunda.mycompany.com:8080",
+  "zeebeGrpcAddress": "grpc://camunda.mycompany.com:26500",
   "camundaAuthStrategy": "NONE",
   "camundaMonitoringApiAddress": "http://camunda.mycompany.com:9600",
   "connectorsRestApiAddress": "http://connectors.mycompany.com:8085"
@@ -299,11 +306,18 @@ CAMUNDA_RUNTIME_MODE=REMOTE
 
 # Remote runtime configuration (SaaS)
 ZEEBE_REST_ADDRESS=https://your-cluster.region.zeebe.camunda.io:443
+ZEEBE_GRPC_ADDRESS=grpcs://your-cluster.region.zeebe.camunda.io:443  # Secure gRPC
 ZEEBE_CLIENT_ID=your-client-id
 ZEEBE_CLIENT_SECRET=your-client-secret
 CAMUNDA_OAUTH_URL=https://login.cloud.camunda.io/oauth/token
 ZEEBE_TOKEN_AUDIENCE=zeebe.camunda.io
 CAMUNDA_AUTH_STRATEGY=OAUTH 
+CAMUNDA_RUNTIME_MODE=REMOTE
+
+# Remote runtime configuration (C8Run - insecure)
+ZEEBE_REST_ADDRESS=http://localhost:8080
+ZEEBE_GRPC_ADDRESS=grpc://localhost:26500  # Insecure gRPC for local development
+CAMUNDA_AUTH_STRATEGY=NONE
 CAMUNDA_RUNTIME_MODE=REMOTE
 
 # Runtime configuration  
@@ -371,6 +385,7 @@ jobs:
   "description": "Staging environment testing",
   "runtimeMode": "REMOTE",
   "zeebeRestAddress": "https://staging.company.com:8080",
+  "zeebeGrpcAddress": "grpcs://staging.company.com:26500",
   "camundaAuthStrategy": "NONE"
 }
 ```
@@ -381,6 +396,7 @@ jobs:
   "description": "Production environment validation",
   "runtimeMode": "REMOTE",
   "zeebeRestAddress": "https://prod.company.com:8080",
+  "zeebeGrpcAddress": "grpcs://prod.company.com:26500",
   "zeebeClientId": "${PROD_CLIENT_ID}",
   "zeebeClientSecret": "${PROD_CLIENT_SECRET}",
   "camundaOauthUrl": "https://login.cloud.camunda.io/oauth/token"
@@ -433,6 +449,7 @@ For local or internal instances without authentication:
 {
   "runtimeMode": "REMOTE",
   "zeebeRestAddress": "http://localhost:8080",
+  "zeebeGrpcAddress": "grpc://localhost:26500",
   "camundaAuthStrategy": "NONE"
 }
 ```
@@ -443,6 +460,7 @@ Required for Camunda SaaS instances:
 {
   "runtimeMode": "REMOTE",
   "zeebeRestAddress": "https://your-cluster.region.zeebe.camunda.io:443",
+  "zeebeGrpcAddress": "grpcs://your-cluster.region.zeebe.camunda.io:26500",  
   "zeebeClientId": "your-client-id",
   "zeebeClientSecret": "your-client-secret",
   "camundaOauthUrl": "https://login.cloud.camunda.io/oauth/token",
@@ -512,6 +530,98 @@ await context.mockJobWorker('complex-task')
     }
     return { approved: true };
   });
+```
+
+### gRPC Worker Testing
+
+For testing external workers that connect via gRPC, use the framework's gRPC client:
+
+```typescript
+test('should process jobs with external gRPC worker', async () => {
+  const client = setup.getClient();
+  const context = setup.getContext();
+
+  // Deploy process with service task
+  await context.deployProcess('./processes/worker-process.bpmn');
+
+  // Create external gRPC worker
+  const grpcClient = client.getZeebeGrpcApiClient();
+  const worker = grpcClient.createWorker({
+    taskType: 'external-task',
+    taskHandler: (job) => {
+      // Process the job
+      const { input } = job.variables;
+      return job.complete({
+        output: `Processed: ${input}`,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
+  try {
+    // Start process instance
+    const camunda = client.getCamundaRestClient();
+    const processInstance = await camunda.createProcessInstance({
+      processDefinitionId: 'worker-process',
+      variables: { input: 'test-data' }
+    });
+
+    // Verify process completion
+    const assertion = CamundaAssert.assertThat(processInstance);
+    await assertion.isCompleted();
+    await assertion.hasVariables({
+      output: 'Processed: test-data'
+    });
+  } finally {
+    worker.close();
+  }
+});
+```
+
+#### gRPC Configuration
+
+For **REMOTE** mode with external Zeebe clusters:
+
+```json
+{
+  "runtimeMode": "REMOTE",
+  "zeebeRestAddress": "https://cluster.region.zeebe.camunda.io:443",
+  "zeebeGrpcAddress": "grpc://cluster.region.zeebe.camunda.io:443",
+  "zeebeClientId": "your-client-id",
+  "zeebeClientSecret": "your-client-secret"
+}
+```
+
+Or use environment variables:
+```bash
+ZEEBE_REST_ADDRESS=https://cluster.region.zeebe.camunda.io:443
+ZEEBE_GRPC_ADDRESS=grpcs://cluster.region.zeebe.camunda.io:443  # Note: protocol-based TLS
+ZEEBE_CLIENT_ID=your-client-id
+ZEEBE_CLIENT_SECRET=your-client-secret
+```
+
+**Protocol-based TLS Detection:**
+- `grpc://` - Insecure connection (local development, C8Run)
+- `grpcs://` - Secure TLS connection (SaaS, production)
+
+The framework automatically configures TLS based on the protocol in `ZEEBE_GRPC_ADDRESS`.
+
+**gRPC Client Logging:**
+By default, the gRPC client logging is suppressed to reduce noise. You can enable it for debugging:
+
+```bash
+# Enable detailed logging
+ZEEBE_CLIENT_LOG_LEVEL=INFO npm test
+
+# Available levels: NONE (default), ERROR, WARN, INFO, DEBUG
+ZEEBE_CLIENT_LOG_LEVEL=DEBUG npm test
+```
+
+Or in configuration file:
+```json
+{
+  "zeebeClientLogLevel": "INFO"
+}
 ```
 
 ### Process Instance Assertions
@@ -704,6 +814,7 @@ For detailed debugging instructions, see [DEBUG.md](DEBUG.md).
 This repository includes working examples:
 
 - [`examples/simple.test.ts`](examples/simple.test.ts) - Basic process testing
+- [`examples/grpc-worker.test.ts`](examples/grpc-worker.test.ts) - gRPC worker testing with external workers
 - [`examples/debug.test.ts`](examples/debug.test.ts) - Debug mode demonstration
 - [`examples/basic-test.test.ts`](examples/basic-test.test.ts) - Comprehensive examples
 
@@ -717,6 +828,9 @@ npm run build
 
 # Run simple example
 npm test examples/simple.test.ts
+
+# Run gRPC worker example
+npm test examples/grpc-worker.test.ts
 
 # Run with debugging
 DEBUG=camunda:* npm test examples/debug.test.ts

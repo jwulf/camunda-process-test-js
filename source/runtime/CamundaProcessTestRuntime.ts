@@ -9,6 +9,7 @@ import { CamundaContainer } from '../containers/CamundaContainer'
 import { CamundaRuntimeConfiguration } from '../types'
 
 import { ContainerRuntimePorts } from './CamundaRuntimePorts'
+import { ContainerRuntimePropertiesUtil } from './CamundaRuntimeProperties'
 
 const debug = Debug('camunda:test:runtime')
 const debugContainer = Debug('camunda:test:container')
@@ -50,6 +51,7 @@ export class CamundaProcessTestRuntime {
 	private container?: StartedTestContainer
 	private connectorsContainer?: StartedTestContainer
 	private gatewayAddress?: string
+	private grpcAddress?: string
 	private remoteMonitoringApiAddress?: string
 	private remoteConnectorsApiAddress?: string
 
@@ -121,11 +123,18 @@ export class CamundaProcessTestRuntime {
 		log('🔌 Creating Camunda client for gateway: %s', this.gatewayAddress)
 
 		// Build client configuration based on runtime mode
-		const clientConfig: Record<string, string> = {
+		const properties = new ContainerRuntimePropertiesUtil(this.config)
+		const clientConfig: Record<string, string | Record<string, string>> = {
 			ZEEBE_REST_ADDRESS: this.gatewayAddress.startsWith('http')
 				? this.gatewayAddress
 				: `http://${this.gatewayAddress}`,
+			ZEEBE_GRPC_ADDRESS: this.grpcAddress?.startsWith('grpc')
+				? this.grpcAddress
+				: `grpc://${this.grpcAddress}`,
 			CAMUNDA_LOG_LEVEL: (process.env.CAMUNDA_LOG_LEVEL as 'none') ?? 'none', // Disable Camunda logs by default
+			zeebeGrpcSettings: {
+				ZEEBE_CLIENT_LOG_LEVEL: properties.zeebeClientLogLevel,
+			},
 		}
 
 		if (this.config.runtimeMode === 'REMOTE') {
@@ -164,6 +173,10 @@ export class CamundaProcessTestRuntime {
 			throw new Error('Gateway address not available')
 		}
 		return this.gatewayAddress
+	}
+
+	getGrpcAddress(): string | undefined {
+		return this.grpcAddress
 	}
 
 	getConnectorsAddress(): string | undefined {
@@ -254,6 +267,48 @@ export class CamundaProcessTestRuntime {
 		// Set gateway address
 		this.gatewayAddress = this.config.zeebeRestAddress
 
+		// Set gRPC address
+		if (this.config.zeebeGrpcAddress) {
+			this.grpcAddress = this.config.zeebeGrpcAddress
+		} else {
+			// Derive gRPC address from REST address (common pattern: same host, port 26500)
+			try {
+				const url = new URL(
+					this.config.zeebeRestAddress.startsWith('http')
+						? this.config.zeebeRestAddress
+						: `http://${this.config.zeebeRestAddress}`
+				)
+
+				if (this.config.clusterType === 'C8RUN') {
+					// C8Run is unsecured - use grpc:// protocol by default
+					const forceSecure = process.env.ZEEBE_SECURE_CONNECTION === 'true'
+					this.grpcAddress = forceSecure
+						? `grpcs://${url.hostname}:26500`
+						: `grpc://${url.hostname}:26500`
+					log(
+						`🔓 C8RUN derived ${forceSecure ? 'secure' : 'insecure'} gRPC: ${this.grpcAddress}`
+					)
+				} else if (this.config.clusterType === 'SAAS') {
+					// SaaS always uses secure connections
+					this.grpcAddress = `grpcs://${url.hostname}:26500`
+					log(`🔒 SaaS derived secure gRPC: ${this.grpcAddress}`)
+				} else {
+					// Self-managed - default to secure, allow override
+					const forceInsecure = process.env.ZEEBE_INSECURE_CONNECTION === 'true'
+					this.grpcAddress = forceInsecure
+						? `grpc://${url.hostname}:26500`
+						: `grpcs://${url.hostname}:26500`
+					log(
+						`🔒 Self-managed derived ${forceInsecure ? 'insecure' : 'secure'} gRPC: ${this.grpcAddress}`
+					)
+				}
+			} catch {
+				log(
+					'⚠️  Could not derive gRPC address from REST address, gRPC workers may not work'
+				)
+			}
+		}
+
 		// Calculate default monitoring API address
 		this.remoteMonitoringApiAddress =
 			this.config.camundaMonitoringApiAddress ||
@@ -266,6 +321,7 @@ export class CamundaProcessTestRuntime {
 
 		log('📡 Remote mode configuration:')
 		log('  Gateway: %s', this.gatewayAddress)
+		log('  gRPC: %s', this.grpcAddress || 'Not configured')
 		log('  Monitoring API: %s', this.remoteMonitoringApiAddress)
 		log('  Connectors API: %s', this.remoteConnectorsApiAddress)
 		log('  Auth Strategy: %s', authStrategy)
@@ -324,10 +380,14 @@ export class CamundaProcessTestRuntime {
 			const managementPort = this.container.getMappedPort(
 				ContainerRuntimePorts.CAMUNDA_MONITORING_API
 			)
+			const gRPCPort = this.container.getMappedPort(26500)
+
 			this.gatewayAddress = `localhost:${gatewayPort}`
+			this.grpcAddress = `grpc://${this.container.getHost()}:${gRPCPort}`
 
 			log('✅ Zeebe started successfully')
 			log('📍 Gateway address: %s', this.gatewayAddress)
+			log('📍 gRPC address: %s', this.grpcAddress)
 			log('📍 Management port: %d', managementPort)
 			log('📍 Container ID: %s', this.container.getId())
 

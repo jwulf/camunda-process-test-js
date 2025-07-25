@@ -118,11 +118,26 @@ export const CAMUNDA_RUNTIME_CONFIGURATION = {
 		description: 'REST API address for remote Zeebe instance',
 	},
 
+	zeebeGrpcAddress: {
+		jsonKey: 'zeebeGrpcAddress',
+		envKey: 'ZEEBE_GRPC_ADDRESS',
+		defaultValue: '',
+		description: 'gRPC API address for remote Zeebe instance (for workers)',
+	},
+
 	zeebeTokenAudience: {
 		jsonKey: 'zeebeTokenAudience',
 		envKey: 'ZEEBE_TOKEN_AUDIENCE',
 		defaultValue: '',
 		description: 'Token audience for OAuth authentication',
+	},
+
+	zeebeClientLogLevel: {
+		jsonKey: 'zeebeClientLogLevel',
+		envKey: 'ZEEBE_CLIENT_LOG_LEVEL',
+		defaultValue: 'NONE',
+		description:
+			'Log level for Zeebe gRPC client (NONE, ERROR, WARN, INFO, DEBUG)',
 	},
 
 	camundaAuthStrategy: {
