@@ -199,6 +199,7 @@ CAMUNDA_TEST_CONFIG_FILE=configs/staging.json npm test
 | `camundaAuthStrategy` | Authentication strategy | `""` (auto-detect) | `CAMUNDA_AUTH_STRATEGY` |
 | `camundaMonitoringApiAddress` | Monitoring API address | Auto-calculated from REST address:9600 | `CAMUNDA_MONITORING_API_ADDRESS` |
 | `connectorsRestApiAddress` | Connectors API address | Auto-calculated from REST address:8085 | `CONNECTORS_REST_API_ADDRESS` |
+| `flushProcesses` | Cancel all active process instances on startup (REMOTE mode only) | `false` | `CAMUNDA_FLUSH_PROCESSES` |
 | `testScope` | Test organization hint | `""` | - |
 | `description` | Human-readable description | `""` | - |
 
@@ -289,6 +290,16 @@ CAMUNDA_TEST_CONFIG_FILE=/path/to/config.json npm test
 }
 ```
 
+**Test environment with process cleanup:**
+```json
+{
+  "runtimeMode": "REMOTE",
+  "zeebeRestAddress": "http://test-camunda:8080",
+  "camundaAuthStrategy": "NONE",
+  "flushProcesses": true
+}
+```
+
 ### Environment Variables
 
 Override configuration file settings or set additional options:
@@ -322,6 +333,9 @@ CAMUNDA_RUNTIME_MODE=REMOTE
 
 # Runtime configuration  
 CAMUNDA_CONNECTORS_ENABLED=true
+
+# Process management (REMOTE mode only)
+CAMUNDA_FLUSH_PROCESSES=true  # Cancel all active process instances on startup (use with caution)
 
 # Debug settings
 DEBUG=camunda:*  # Enable debug logging
@@ -481,6 +495,51 @@ For `zeebeRestAddress: "https://example.com:443"`:
 You can override these defaults by explicitly setting:
 - `camundaMonitoringApiAddress`
 - `connectorsRestApiAddress`
+
+### Process Instance Management
+
+#### Automatic Process Cleanup (⚠️ Use with Caution)
+
+When testing against a REMOTE engine (such as C8Run), you may want to clean up any active process instances from previous test runs to ensure test isolation. The framework provides the `flushProcesses` option:
+
+```json
+{
+  "runtimeMode": "REMOTE",
+  "zeebeRestAddress": "http://localhost:8080",
+  "flushProcesses": true
+}
+```
+
+**Environment Variable:**
+```bash
+CAMUNDA_FLUSH_PROCESSES=true
+```
+
+**⚠️ Important Safety Notes:**
+- **Only works in REMOTE mode** - Never enabled for managed containers
+- **Defaults to `false`** - Must be explicitly enabled
+- **Cancels ALL active process instances** - Use only in test/development environments
+- **Cannot be undone** - Cancelled instances cannot be resumed
+
+**When to Use:**
+- ✅ Testing against dedicated test environments
+- ✅ Local C8Run development instances
+- ✅ Isolated staging environments
+- ❌ **Never use in production environments**
+- ❌ **Never use in shared environments with important data**
+
+**Example Usage:**
+```typescript
+// Configuration file approach
+{
+  "runtimeMode": "REMOTE",
+  "zeebeRestAddress": "http://test-camunda:8080",
+  "flushProcesses": true  // Cleanup before each test run
+}
+
+// Environment variable approach
+CAMUNDA_FLUSH_PROCESSES=true npm test
+```
 
 ## Core API
 

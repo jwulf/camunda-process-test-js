@@ -2,5 +2,6 @@
     "runtimeMode": "REMOTE",
     "zeebeRestAddress": "http://localhost:8080",
     "zeebeGrpcAddress": "grpc://localhost:26500",
-    "description": "Local development environment using C8Run"
+    "description": "Local development environment using C8Run",
+    "flushProcesses": true
 }

@@ -44,6 +44,7 @@ export class ContainerRuntimePropertiesUtil implements Properties {
 	public zeebeTokenAudience!: Properties['zeebeTokenAudience']
 	public zeebeClientLogLevel!: Properties['zeebeClientLogLevel']
 	public camundaAuthStrategy!: Properties['camundaAuthStrategy']
+	public flushProcesses!: Properties['flushProcesses']
 	public camundaMonitoringApiAddress!: Properties['camundaMonitoringApiAddress']
 	public connectorsRestApiAddress!: Properties['connectorsRestApiAddress']
 
