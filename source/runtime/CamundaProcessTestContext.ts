@@ -8,6 +8,8 @@ import { JobWorkerMock } from './JobWorkerMock'
 const debug = Debug('camunda:test:context')
 const debugDeploy = Debug('camunda:test:deploy')
 const debugWorker = Debug('camunda:test:worker')
+const clockWarn = Debug('camunda:test:clock')
+clockWarn.enabled = true
 
 /**
  * Test context that provides utilities and manages test state.
@@ -112,12 +114,22 @@ export class CamundaProcessTestContext {
 	/**
 	 * Increases the current time by the specified duration.
 	 * This affects timers and scheduled tasks in processes.
+	 *
+	 * ⚠️  Warning: Time manipulation may fail in REMOTE mode (SaaS/C8Run environments).
+	 * For reliable timer testing, use MANAGED mode with Docker containers.
 	 */
 	async increaseTime(
 		duration:
 			| number
 			| { days?: number; hours?: number; minutes?: number; seconds?: number }
 	): Promise<void> {
+		const runtimeMode = this.runtime.getRuntimeMode()
+		if (runtimeMode === 'REMOTE') {
+			clockWarn(
+				'⚠️  REMOTE mode: Time manipulation may fail on SaaS/C8Run. Consider using MANAGED mode for timer tests.'
+			)
+		}
+
 		let milliseconds: number
 
 		if (typeof duration === 'number') {

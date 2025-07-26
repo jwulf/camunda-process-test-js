@@ -739,6 +739,10 @@ await decisionAssertion.hasResultContaining({ score: 85 });
 
 ### Time Manipulation
 
+> ⚠️  **IMPORTANT WARNING**: Time manipulation may fail in REMOTE mode (SaaS/C8Run environments). 
+> For reliable timer testing, use **MANAGED mode** with Docker containers. 
+> SaaS and C8Run typically reject clock modification attempts even with `ZEEBE_CLOCK_CONTROLLED=true`.
+
 Control Zeebe's internal clock for testing time-based processes like timers, timeouts, and scheduled tasks.
 
 ```typescript
@@ -831,10 +835,43 @@ await context.increaseTime({
 });
 ```
 
+#### Recommended Testing Strategy
+
+```typescript
+// Timer tests: Use MANAGED mode (Docker containers)
+describe('Timer-based processes', () => {
+  // Configuration: camunda-test-config.json
+  // { "runtimeMode": "MANAGED" }
+  
+  test('should handle 24-hour timer', async () => {
+    // Deploy and start process with timer
+    await context.deployProcess('./timer-process.bpmn');
+    
+    // This works reliably in MANAGED mode
+    await context.increaseTime({ hours: 24 });
+    
+    // Verify timer completion...
+  });
+});
+
+// Non-timer tests: Can use REMOTE mode
+describe('Business logic processes', () => {
+  // Configuration: camunda-test-config.json  
+  // { "runtimeMode": "REMOTE", "zeebeRestAddress": "..." }
+  
+  test('should complete approval workflow', async () => {
+    // No time manipulation needed - works great in REMOTE mode
+    // Test business logic, user tasks, service tasks, etc.
+  });
+});
+```
+
 **Notes**: 
 
-* Time manipulation uses Zeebe's internal clock management API and requires the `ZEEBE_CLOCK_CONTROLLED=true` environment variable (automatically set by the framework).
-* Time manipulation is not available when testing against SaaS using the remote engine
+* **MANAGED mode only**: Time manipulation is designed for MANAGED mode (Docker containers) where `ZEEBE_CLOCK_CONTROLLED=true` is automatically set.
+* **REMOTE mode limitations**: SaaS and C8Run environments typically reject clock modification attempts, even with `ZEEBE_CLOCK_CONTROLLED=true`.
+* **Testing strategy**: Use MANAGED mode for timer-based tests, REMOTE mode for other functionality tests.
+* **Framework behavior**: The framework will warn when attempting time manipulation in REMOTE mode but will still attempt the operation.
 
 ## Debug Mode
 
