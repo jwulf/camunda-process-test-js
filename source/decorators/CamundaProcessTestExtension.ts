@@ -8,7 +8,8 @@ import { ContainerRuntimePropertiesUtil } from '../runtime/CamundaRuntimePropert
 import { CamundaRuntimeConfiguration } from '../types'
 
 const debug = Debug('camunda:test:extension')
-debug.enabled = true
+const log = Debug('camunda:test')
+log.enabled = true
 
 /**
  * Extension that manages the lifecycle of Camunda process tests.
@@ -27,7 +28,7 @@ export class CamundaProcessTestExtension {
 			ContainerRuntimePropertiesUtil.readProperties()
 
 		// Initialize runtime
-		debug('🚀 Initializing Camunda runtime...')
+		log('🚀 Initializing Camunda runtime...')
 		this.runtime = new CamundaProcessTestRuntime(runtimeConfig)
 		await this.runtime.start()
 
@@ -63,7 +64,7 @@ export class CamundaProcessTestExtension {
 	}
 
 	async afterAll(): Promise<void> {
-		debug('🏁 Tearing down Camunda Process Test environment...')
+		log('🏁 Tearing down Camunda Process Test environment...')
 
 		// Reset assertions
 		debug('🔄 Resetting assertions...')
@@ -75,11 +76,11 @@ export class CamundaProcessTestExtension {
 
 		// Stop runtime
 		if (this.runtime) {
-			debug('🛑 Stopping runtime...')
+			log('🛑 Stopping runtime...')
 			await this.runtime.stop()
 		}
 
-		debug('✅ Camunda Process Test environment torn down successfully')
+		log('✅ Camunda Process Test environment torn down successfully')
 	}
 
 	getClient(): Camunda8 {

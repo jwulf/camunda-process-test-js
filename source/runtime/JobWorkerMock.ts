@@ -27,12 +27,12 @@ export class JobWorkerMock {
 	) {}
 
 	/**
-	 * Configures the worker to complete jobs successfully with the given variables.
+	 * Configures the worker to complete a job successfully with the given variables.
 	 */
 	thenComplete<T = Record<string, unknown>>(variables?: T): Promise<void> {
 		this.handlers.push(async (job, complete) => {
 			debug(
-				`Completing job ${job.key || job.jobKey} of type ${this.jobType} with variables:`,
+				`Completing job ${job.key || job.jobKey} of type ${this.jobType} for process instance ${job.processInstanceKey} with variables:`,
 				variables
 			)
 			await complete.success(variables ?? {})
@@ -42,7 +42,7 @@ export class JobWorkerMock {
 	}
 
 	/**
-	 * Configures the worker to fail jobs with the given error message.
+	 * Configures the worker to fail a job with the given error message.
 	 */
 	thenThrowError(errorMessage: string, retries: number = 0): Promise<void> {
 		this.handlers.push(async (job, complete) => {

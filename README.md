@@ -508,6 +508,8 @@ const processInstance = await camunda.createProcessInstance({
 
 ### Job Worker Mocking
 
+Note that each Job Worker Mock will only process one job. If you want to complete more than one job, then you should create a real job worker in the test, using the injected client.
+
 ```typescript
 // Complete successfully
 await context.mockJobWorker('payment-service')
