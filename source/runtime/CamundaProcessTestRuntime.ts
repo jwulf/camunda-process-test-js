@@ -319,6 +319,12 @@ export class CamundaProcessTestRuntime {
 			this.config.connectorsRestApiAddress ||
 			calculateDefaultApiAddress(this.config.zeebeRestAddress, 8085)
 
+		// Flush active process instances if configured
+		const properties = new ContainerRuntimePropertiesUtil(this.config)
+		if (properties.flushProcesses === 'true') {
+			await this.flushActiveProcessInstances()
+		}
+
 		log('📡 Remote mode configuration:')
 		log('  Gateway: %s', this.gatewayAddress)
 		log('  gRPC: %s', this.grpcAddress || 'Not configured')
@@ -628,5 +634,86 @@ export class CamundaProcessTestRuntime {
 		} catch (error) {
 			debugLogs('❌ Could not capture failed container logs: %s', error)
 		}
+	}
+
+	/**
+	 * Flush all active process instances from the remote Camunda instance.
+	 * This is used to clean up any leftover processes from previous test runs.
+	 * Only runs in REMOTE mode when flushProcesses is enabled.
+	 */
+	private async flushActiveProcessInstances(): Promise<void> {
+		log('🧹 Flushing active process instances...')
+
+		try {
+			// Create a temporary client for the flush operation
+			const tempClient = await this.createTemporaryClient()
+			const camunda = tempClient.getCamundaRestClient()
+
+			// Query for all active process instances
+			const processInstances = await camunda.searchProcessInstances({
+				filter: {
+					state: 'ACTIVE',
+				},
+			})
+
+			if (processInstances.items.length === 0) {
+				log('✅ No active process instances found')
+				return
+			}
+
+			log(`📋 Found ${processInstances.items.length} active process instances`)
+
+			// Cancel each process instance
+			let cancelledCount = 0
+			let errorCount = 0
+
+			for (const instance of processInstances.items) {
+				try {
+					// eslint-disable-next-line @typescript-eslint/no-explicit-any
+					const instanceData = instance as any
+					await camunda.cancelProcessInstance(instanceData.processInstanceKey)
+					cancelledCount++
+					log(
+						`✅ Cancelled process instance ${instanceData.processInstanceKey}`
+					)
+				} catch (error) {
+					// eslint-disable-next-line @typescript-eslint/no-explicit-any
+					const instanceData = instance as any
+					errorCount++
+					log(
+						`❌ Failed to cancel process instance ${instanceData.processInstanceKey}: ${error}`
+					)
+					// Continue with other instances even if one fails
+				}
+			}
+
+			log(
+				`🧹 Flush complete: ${cancelledCount} cancelled, ${errorCount} errors`
+			)
+		} catch (error) {
+			log(`❌ Error during process flush: ${error}`)
+			// Don't throw - this is cleanup, not critical for test execution
+		}
+	}
+
+	/**
+	 * Creates a temporary Camunda8 client for flush operations.
+	 * Uses the same configuration as the main runtime.
+	 */
+	private async createTemporaryClient(): Promise<Camunda8> {
+		const authStrategy = detectAuthStrategy(this.config)
+
+		const config: Record<string, string> = {
+			ZEEBE_REST_ADDRESS: this.gatewayAddress || '',
+		}
+
+		// Add authentication if configured
+		if (authStrategy === 'OAUTH') {
+			config.ZEEBE_CLIENT_ID = this.config.zeebeClientId || ''
+			config.ZEEBE_CLIENT_SECRET = this.config.zeebeClientSecret || ''
+			config.CAMUNDA_OAUTH_URL = this.config.camundaOauthUrl || ''
+		}
+
+		return new Camunda8(config)
 	}
 }

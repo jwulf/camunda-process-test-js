@@ -148,6 +148,14 @@ export const CAMUNDA_RUNTIME_CONFIGURATION = {
 			'Authentication strategy: OAUTH, NONE, or empty for auto-detection',
 	},
 
+	flushProcesses: {
+		jsonKey: 'flushProcesses',
+		envKey: 'CAMUNDA_FLUSH_PROCESSES',
+		defaultValue: 'false',
+		description:
+			'Cancel all active process instances when starting REMOTE runtime (use with caution)',
+	},
+
 	// Remote API Endpoints
 	camundaMonitoringApiAddress: {
 		jsonKey: 'camundaMonitoringApiAddress',
