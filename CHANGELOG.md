@@ -1,3 +1,10 @@
+# [1.5.0](https://github.com/jwulf/camunda-process-test-js/compare/v1.4.0...v1.5.0) (2025-07-26)
+
+
+### Features
+
+* implement flush processes in REMOTE mode. fixes [#18](https://github.com/jwulf/camunda-process-test-js/issues/18) ([05aae1f](https://github.com/jwulf/camunda-process-test-js/commit/05aae1f52b7182a8df369dd2710eea72900d84d3))
+
 # [1.4.0](https://github.com/jwulf/camunda-process-test-js/compare/v1.3.0...v1.4.0) (2025-07-25)
 
 
