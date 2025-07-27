@@ -197,6 +197,10 @@ export class CamundaProcessTestRuntime {
 		return this.container as unknown as CamundaContainer
 	}
 
+	getRuntimeMode(): 'MANAGED' | 'REMOTE' {
+		return this.config.runtimeMode || 'MANAGED'
+	}
+
 	getMonitoringApiPort(): number {
 		if (this.config.runtimeMode === 'REMOTE') {
 			if (this.remoteMonitoringApiAddress) {
