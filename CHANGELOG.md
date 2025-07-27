@@ -1,3 +1,10 @@
+# [1.6.0](https://github.com/jwulf/camunda-process-test-js/compare/v1.5.0...v1.6.0) (2025-07-27)
+
+
+### Features
+
+* warn on REMOTE clock manipulation. fixes [#17](https://github.com/jwulf/camunda-process-test-js/issues/17) ([368b422](https://github.com/jwulf/camunda-process-test-js/commit/368b422c544b026f43228271fd2c0b3836c9a28e))
+
 # [1.5.0](https://github.com/jwulf/camunda-process-test-js/compare/v1.4.0...v1.5.0) (2025-07-26)
 
 
