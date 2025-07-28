@@ -1,3 +1,10 @@
+# [1.7.0](https://github.com/jwulf/camunda-process-test-js/compare/v1.6.0...v1.7.0) (2025-07-28)
+
+
+### Features
+
+* add scaffolding command. fixes [#21](https://github.com/jwulf/camunda-process-test-js/issues/21) ([77b878d](https://github.com/jwulf/camunda-process-test-js/commit/77b878d047c021f190ad23ff6b30d4e5c8c7c42d))
+
 # [1.6.0](https://github.com/jwulf/camunda-process-test-js/compare/v1.5.0...v1.6.0) (2025-07-27)
 
 
