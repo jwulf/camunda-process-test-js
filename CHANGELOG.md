@@ -1,3 +1,10 @@
+# [1.8.0](https://github.com/jwulf/camunda-process-test-js/compare/v1.7.0...v1.8.0) (2025-07-28)
+
+
+### Features
+
+* expose runtimeMode via test context ([93b2fe0](https://github.com/jwulf/camunda-process-test-js/commit/93b2fe02f17a7b9d118011bee6f2a9ef5f9ec6db))
+
 # [1.7.0](https://github.com/jwulf/camunda-process-test-js/compare/v1.6.0...v1.7.0) (2025-07-28)
 
 
