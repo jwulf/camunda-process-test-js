@@ -4,6 +4,9 @@
   "description": "Node.js testing framework for Camunda process automation",
   "main": "distribution/index.js",
   "types": "distribution/index.d.ts",
+  "bin": {
+    "camunda8-process-test": "./distribution/cli/index.js"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/jwulf/camunda-process-test-js.git"
@@ -47,7 +50,9 @@
   "dependencies": {
     "@camunda8/sdk": "^8.7.23",
     "await-timeout": "^1.1.1",
+    "commander": "^11.0.0",
     "debug": "^4.3.4",
+    "fs-extra": "^11.0.0",
     "testcontainers": "^10.2.0"
   },
   "devDependencies": {
@@ -58,6 +63,7 @@
     "@semantic-release/github": "^11.0.3",
     "@semantic-release/npm": "^12.0.2",
     "@types/debug": "^4.1.12",
+    "@types/fs-extra": "^11.0.0",
     "@types/jest": "^29.5.0",
     "@types/node": "^20.0.0",
     "@typescript-eslint/eslint-plugin": "^6.0.0",

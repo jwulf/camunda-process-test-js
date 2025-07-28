@@ -16,10 +16,47 @@ A comprehensive testing framework for Camunda process automation in Node.js/Type
 - 🧪 **Jest Integration**: Seamless integration with Jest testing framework
 - 🐛 **Debug Mode**: Comprehensive debugging for Docker operations and test execution
 
+## Quick Project Setup
+
+Get started with a new Camunda process test project in seconds using the built-in scaffolding command:
+
+```bash
+# Install Camunda Process Test
+npm install @camunda8/process-test --save-dev
+
+# Generate configuration files
+npx @camunda8/process-test config:init
+```
+
+This will:
+- ✅ **Auto-detect** your project setup (TypeScript, Jest)
+- ✅ **Generate** `camunda-test-config.json` with sensible defaults
+- ✅ **Create** Jest configuration if Jest is detected
+- ✅ **Provide** setup instructions for missing dependencies
+
+### Scaffolding Options
+
+```bash
+# Preview what files would be created without writing them
+npx @camunda8/process-test config:init --dry-run
+
+# Force Jest configuration generation even if Jest isn't detected
+npx @camunda8/process-test config:init --jest
+
+# Get help for available options
+npx @camunda8/process-test config:init --help
+```
+
+The scaffolding tool intelligently detects your project setup:
+- **TypeScript projects**: Generates TypeScript-compatible Jest configuration
+- **JavaScript projects**: Generates standard Jest configuration  
+- **Existing configs**: Won't overwrite existing configuration files
+- **Missing dependencies**: Provides helpful installation commands
+
 ## Installation
 
 ```bash
-npm install @camunda8/process-test-node --save-dev
+npm install @camunda8/process-test --save-dev
 
 # Peer dependencies
 npm install jest @types/jest --save-dev
@@ -42,7 +79,7 @@ import { Camunda8 } from '@camunda8/sdk';
 import {
   setupCamundaProcessTest,
   CamundaAssert
-} from '@camunda/process-test-node';
+} from '@camunda8/process-test';
 
 describe('Order Process', () => {
   const setup = setupCamundaProcessTest();
@@ -86,7 +123,7 @@ import {
   CamundaProcessTest,
   CamundaAssert,
   CamundaProcessTestContext
-} from '@camunda/process-test-node';
+} from '@camunda8/process-test';
 
 @CamundaProcessTest
 class MyProcessTest {
@@ -796,7 +833,7 @@ test('should complete timer-based process', async () => {
 The framework provides direct access to Zeebe's clock management through the `CamundaClock` utility:
 
 ```typescript
-import { CamundaClock } from '@camunda/process-test-node';
+import { CamundaClock } from '@camunda8/process-test';
 
 // Create clock instance (usually done automatically by the framework)
 const runtime = setup.getRuntime();
@@ -1131,4 +1168,4 @@ Apache License 2.0 - see [LICENSE](LICENSE) file for details.
 
 - 📚 [Documentation](https://docs.camunda.io)
 - 💬 [Community Forum](https://forum.camunda.io)
-- 🐛 [Issue Tracker](https://github.com/camunda/camunda-process-test-node/issues)
+- 🐛 [Issue Tracker](https://github.com/jwulf/camunda-process-test-js/issues)
