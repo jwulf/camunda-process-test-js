@@ -22,6 +22,8 @@ npm run examples
 | [`simple.test.ts`](simple.test.ts) | Basic process testing | Quick start, single process |
 | [`debug.test.ts`](debug.test.ts) | Debug mode demonstration | Troubleshooting, container inspection |
 | [`basic-test.test.ts`](basic-test.test.ts) | Comprehensive examples | Multiple patterns, decorator/function approaches |
+| [`runtime-mode.test.ts`](runtime-mode.test.ts) | Runtime mode detection | Differential behavior for MANAGED vs REMOTE |
+| [`runtime-mode-decorator.test.ts`](runtime-mode-decorator.test.ts) | Runtime mode (decorator) | Decorator approach for runtime detection |
 
 ## 🎯 BPMN/DMN Resources
 
@@ -60,9 +62,13 @@ The framework automatically pulls these images on first run:
 | `npm run examples:simple` | Run simple process test |
 | `npm run examples:debug` | Run debug demonstration |
 | `npm run examples:basic` | Run comprehensive examples |
+| `npm run examples:runtime-mode` | Run runtime mode detection (function approach) |
+| `npm run examples:runtime-mode-decorator` | Run runtime mode detection (decorator approach) |
 | `npm run examples:simple:debug` | Run simple example with full debug output |
 | `npm run examples:debug:debug` | Run debug example with full debug output |
 | `npm run examples:basic:debug` | Run comprehensive examples with full debug output |
+| `npm run examples:runtime-mode:debug` | Run runtime mode example with full debug output |
+| `npm run examples:runtime-mode-decorator:debug` | Run runtime mode decorator example with full debug output |
 | `npm run examples:all:debug` | Run all examples with full debug output |
 
 ### Quick Start
@@ -80,11 +86,15 @@ npm run examples:simple:debug
 npm run examples:simple      # Simple process test
 npm run examples:debug       # Debug demonstration
 npm run examples:basic       # Comprehensive examples
+npm run examples:runtime-mode              # Runtime mode detection (function)
+npm run examples:runtime-mode-decorator    # Runtime mode detection (decorator)
 
 # Run with full debug output
 npm run examples:simple:debug
 npm run examples:debug:debug
 npm run examples:basic:debug
+npm run examples:runtime-mode:debug
+npm run examples:runtime-mode-decorator:debug
 ```
 
 ### All Examples
@@ -194,6 +204,50 @@ npm run examples:basic
 
 **Expected output**: ✅ Multiple test scenarios pass
 
+---
+
+### 4. Runtime Mode Detection (`runtime-mode.test.ts`)
+
+**Purpose**: Demonstrates how to detect and handle different runtime modes.
+
+**What it does**:
+- Uses function approach with `setupCamundaProcessTest()`
+- Calls `context.getRuntimeMode()` to detect current mode
+- Shows differential test behavior for MANAGED vs REMOTE modes
+- Provides examples of mode-specific test logic
+
+**Key features**:
+- Runtime mode detection: `'MANAGED'` or `'REMOTE'`
+- Conditional test behavior based on environment
+- Performance and capability awareness
+
+**Run it**:
+```bash
+npm run examples           # Will run as part of all examples
+npm test examples/runtime-mode.test.ts  # Run individually
+```
+
+**Expected output**: ✅ Runtime mode detected and logged
+
+---
+
+### 5. Runtime Mode Detection - Decorator (`runtime-mode-decorator.test.ts`)
+
+**Purpose**: Same as above but using the decorator approach.
+
+**What it demonstrates**:
+- Uses decorator approach with `@CamundaProcessTest`
+- Auto-injected context with `getRuntimeMode()` method
+- Class-based test organization with runtime awareness
+
+**Run it**:
+```bash
+npm run examples           # Will run as part of all examples
+npm test examples/runtime-mode-decorator.test.ts  # Run individually
+```
+
+**Expected output**: ✅ Runtime mode detected via decorator approach
+
 ## ⚡ Performance Tips
 
 ### Container Startup
@@ -254,6 +308,31 @@ docker stop $(docker ps -q --filter ancestor=camunda/camunda)
 - Container logs are captured for debugging
 - Non-blocking log capture prevents hanging
 
+#### 6. Runtime Mode Considerations
+**Issue**: Different behavior between MANAGED and REMOTE modes
+
+**MANAGED Mode (Docker)**:
+- Slower startup (container initialization)
+- Full control over Camunda state
+- Isolated test environment
+- Container logs available for debugging
+
+**REMOTE Mode (SaaS/C8Run)**:
+- Faster test execution
+- Shared environment considerations
+- Limited control over Camunda state
+- External dependency on running instance
+
+**Solution**: Use `context.getRuntimeMode()` for differential test logic
+```typescript
+const runtimeMode = context.getRuntimeMode();
+if (runtimeMode === 'MANAGED') {
+  // Container-specific test behavior
+} else {
+  // Remote-specific test behavior
+}
+```
+
 ### Debug Troubleshooting
 ```bash
 # See container startup details
@@ -308,6 +387,25 @@ await context.mockJobWorker('job-type')
 ```typescript
 const assertion = await CamundaAssert.assertThat(processInstance);
 await assertion.isCompleted();
+```
+
+### Runtime Mode Detection
+```typescript
+// Function approach
+const setup = setupCamundaProcessTest();
+const context = setup.getContext();
+const runtimeMode = context.getRuntimeMode(); // 'MANAGED' | 'REMOTE'
+
+// Decorator approach
+@CamundaProcessTest
+class MyTest {
+  private context!: CamundaProcessTestContext;
+  
+  async testMethod() {
+    const runtimeMode = this.context.getRuntimeMode();
+    // Use runtime mode for differential test behavior
+  }
+}
 ```
 
 ## 🎯 Creating Your Own Tests

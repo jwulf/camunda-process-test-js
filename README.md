@@ -1116,6 +1116,53 @@ DEBUG=camunda:test:logs npm test
 - **`CamundaClock`**: Clock management for time-based testing
 - **`JobWorkerMock`**: Job worker mocking utilities
 
+### Runtime Mode Detection
+
+The framework supports two runtime modes and provides a way to detect which mode is active for differential test behavior:
+
+```typescript
+// Function approach
+const setup = setupCamundaProcessTest();
+const context = setup.getContext();
+const runtimeMode = context.getRuntimeMode(); // Returns 'MANAGED' | 'REMOTE'
+
+// Decorator approach
+@CamundaProcessTest
+class MyTest {
+  private context!: CamundaProcessTestContext;
+  
+  async testWithRuntimeSpecificBehavior() {
+    const runtimeMode = this.context.getRuntimeMode();
+    
+    if (runtimeMode === 'MANAGED') {
+      // Test behavior specific to Docker container environment
+      // - Can test container logs
+      // - Can test container restart scenarios
+      // - Full control over Camunda lifecycle
+    } else {
+      // Test behavior specific to remote Camunda instance
+      // - Cannot control container lifecycle
+      // - May have different performance characteristics
+      // - Need to handle external dependencies
+    }
+  }
+}
+```
+
+**Runtime Modes:**
+
+- **`MANAGED`** (default): Uses Docker containers managed by TestContainers
+  - Full control over Camunda lifecycle
+  - Isolated test environment
+  - Container logs available for debugging
+  - Slower startup (container initialization)
+
+- **`REMOTE`**: Connects to external Camunda instance (SaaS, C8Run, etc.)
+  - No container management overhead
+  - Faster test execution
+  - Shared environment considerations
+  - Limited control over Camunda state
+
 ### Assertion Classes
 
 - **`ProcessInstanceAssert`**: Process instance assertions

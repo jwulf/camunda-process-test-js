@@ -50,6 +50,14 @@ export class CamundaProcessTestContext {
 	}
 
 	/**
+	 * Gets the current runtime mode (MANAGED or REMOTE).
+	 * Useful for writing differential test behavior based on the runtime environment.
+	 */
+	getRuntimeMode(): 'MANAGED' | 'REMOTE' {
+		return this.runtime.getRuntimeMode()
+	}
+
+	/**
 	 * Deploys a BPMN process from a file path.
 	 */
 	async deployProcess(resourcePath: string, processId?: string): Promise<void> {
