@@ -33,8 +33,12 @@
     "examples:simple": "npm run build && npm test examples/simple.test.ts",
     "examples:debug": "npm run build && DEBUG=camunda:test:* npm test examples/debug.test.ts",
     "examples:basic": "npm run build && npm test examples/basic-test.test.ts",
+    "examples:runtime-mode": "npm run build && npm test examples/runtime-mode.test.ts",
+    "examples:runtime-mode-decorator": "npm run build && npm test examples/runtime-mode-decorator.test.ts",
     "examples:simple:debug": "npm run build && DEBUG=camunda:test:* npm test examples/simple.test.ts",
     "examples:basic:debug": "npm run build && DEBUG=camunda:test:* npm test examples/basic-test.test.ts",
+    "examples:runtime-mode:debug": "npm run build && DEBUG=camunda:test:* npm test examples/runtime-mode.test.ts",
+    "examples:runtime-mode-decorator:debug": "npm run build && DEBUG=camunda:test:* npm test examples/runtime-mode-decorator.test.ts",
     "examples:all:debug": "npm run build && DEBUG=camunda:test:* npm test examples/"
   },
   "keywords": [
