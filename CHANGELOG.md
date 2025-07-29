@@ -1,3 +1,10 @@
+# [1.12.0](https://github.com/jwulf/camunda-process-test-js/compare/v1.11.1...v1.12.0) (2025-07-29)
+
+
+### Features
+
+* emit runtime configuration. fixes [#32](https://github.com/jwulf/camunda-process-test-js/issues/32) ([8ef12d3](https://github.com/jwulf/camunda-process-test-js/commit/8ef12d317c580dc2e01a6eb880c73864abedbf7e))
+
 ## [1.11.1](https://github.com/jwulf/camunda-process-test-js/compare/v1.11.0...v1.11.1) (2025-07-29)
 
 
