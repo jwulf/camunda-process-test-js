@@ -303,7 +303,8 @@ export class CamundaProcessTestContext {
 
 	/**
 	 * Deploys a BPMN process from a file path.
-	 * @deprecated Use deployResources()
+	 * @deprecated Use deployResources([resourcePath]) instead.
+	 * Example: await deployResources(["path/to/process.bpmn"]);
 	 */
 	async deployProcess(resourcePath: string) {
 		return this.deployResources([resourcePath])
