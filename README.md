@@ -1195,6 +1195,8 @@ DEBUG=camunda:test:logs npm test
 
 ## API Reference
 
+📖 **[Complete API Documentation](https://jwulf.github.io/camunda-process-test-js/)** - Comprehensive TypeDoc-generated API documentation
+
 ### Core Classes
 
 - **`setupCamundaProcessTest()`**: Function for test setup

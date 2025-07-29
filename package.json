@@ -17,6 +17,7 @@
   },
   "scripts": {
     "build": "tsc",
+    "build:docs": "rm -rf ./docs && typedoc",
     "clean": "rm -rf dist",
     "clean:all": "rm -rf dist node_modules package-lock.json",
     "test": "jest",
@@ -84,6 +85,9 @@
     "prettier": "^3.6.2",
     "semantic-release": "^24.2.7",
     "ts-jest": "^29.1.0",
+    "typedoc": "^0.26.11",
+    "typedoc-plugin-include-example": "^1.4.2",
+    "typedoc-plugin-missing-exports": "^3.0.0",
     "typescript": "^5.8.3"
   },
   "peerDependencies": {
