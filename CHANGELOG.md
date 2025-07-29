@@ -1,3 +1,10 @@
+## [1.11.1](https://github.com/jwulf/camunda-process-test-js/compare/v1.11.0...v1.11.1) (2025-07-29)
+
+
+### Bug Fixes
+
+* manage lifecycle of ZeebeGrpcApiClient. fixes [#31](https://github.com/jwulf/camunda-process-test-js/issues/31) ([f7fc111](https://github.com/jwulf/camunda-process-test-js/commit/f7fc111969ca2b5be17825118fdbfde56668fea0))
+
 # [1.11.0](https://github.com/jwulf/camunda-process-test-js/compare/v1.10.0...v1.11.0) (2025-07-29)
 
 
