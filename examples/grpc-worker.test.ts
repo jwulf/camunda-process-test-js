@@ -68,7 +68,8 @@ describe('gRPC Worker Test', () => {
 		const grpcClient = client.getZeebeGrpcApiClient()
 		log('🔍 gRPC client created successfully')
 
-		const worker = grpcClient.createWorker({
+		// Create worker - it will be automatically registered and closed by the framework
+		grpcClient.createWorker({
 			taskType: 'test-worker',
 			taskHandler: (job) => {
 				log('🔧 Worker received job:', job.key)
@@ -81,44 +82,41 @@ describe('gRPC Worker Test', () => {
 			},
 		})
 
-		try {
-			// Start a process instance using REST API
-			const camunda = client.getCamundaRestClient()
-			const processInstance = await camunda.createProcessInstance({
-				processDefinitionId: 'grpc-worker-test',
-				variables: {
-					testInput: 'hello world',
-					counter: 42,
-				},
-			})
-
-			log('📋 Started process instance:', processInstance.processInstanceKey)
-
-			// Wait for the job to be completed
-			const timeout = 10000 // 10 seconds
-			const startTime = Date.now()
-			while (!jobCompleted && Date.now() - startTime < timeout) {
-				await new Promise((resolve) => setTimeout(resolve, 100))
-			}
-
-			// Verify the job was processed
-			expect(jobCompleted).toBe(true)
-			expect(jobData).toMatchObject({
+		// Start a process instance using REST API
+		const camunda = client.getCamundaRestClient()
+		const processInstance = await camunda.createProcessInstance({
+			processDefinitionId: 'grpc-worker-test',
+			variables: {
 				testInput: 'hello world',
 				counter: 42,
-			})
+			},
+		})
 
-			// Verify the process completed using CamundaAssert
-			const assertion = CamundaAssert.assertThat(processInstance)
-			await assertion.isCompleted()
+		log('📋 Started process instance:', processInstance.processInstanceKey)
 
-			log('✅ gRPC worker test completed successfully')
-		} finally {
-			// Clean up the worker and temp file
-			worker.close()
-			if (fs.existsSync(bpmnPath)) {
-				fs.unlinkSync(bpmnPath)
-			}
+		// Wait for the job to be completed
+		const timeout = 10000 // 10 seconds
+		const startTime = Date.now()
+		while (!jobCompleted && Date.now() - startTime < timeout) {
+			await new Promise((resolve) => setTimeout(resolve, 100))
+		}
+
+		// Verify the job was processed
+		expect(jobCompleted).toBe(true)
+		expect(jobData).toMatchObject({
+			testInput: 'hello world',
+			counter: 42,
+		})
+
+		// Verify the process completed using CamundaAssert
+		const assertion = CamundaAssert.assertThat(processInstance)
+		await assertion.isCompleted()
+
+		log('✅ gRPC worker test completed successfully')
+
+		// Clean up temp file (worker will be automatically closed by framework)
+		if (fs.existsSync(bpmnPath)) {
+			fs.unlinkSync(bpmnPath)
 		}
 	}, 30000) // 30 second timeout for the test
 })
