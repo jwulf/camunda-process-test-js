@@ -312,7 +312,7 @@ export class CamundaProcessTestContext {
 
 	/**
 	 * Deploys a DMN decision from a file path.
-	 * @deprecated Use deployResources()
+	 * @deprecated Use deployResources([resourcePath]) instead.
 	 */
 	async deployDecision(resourcePath: string) {
 		return this.deployResources([resourcePath])
