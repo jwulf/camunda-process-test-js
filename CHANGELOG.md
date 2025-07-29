@@ -1,3 +1,15 @@
+# [1.11.0](https://github.com/jwulf/camunda-process-test-js/compare/v1.10.0...v1.11.0) (2025-07-29)
+
+
+### Bug Fixes
+
+* fix types on context methods ([47cdb1d](https://github.com/jwulf/camunda-process-test-js/commit/47cdb1de44fdd8ff61eccab787d7b7786547122f))
+
+
+### Features
+
+* automatic worker lifecycle management. Fixes Manage lifecycle of workers via context ([ccacd0b](https://github.com/jwulf/camunda-process-test-js/commit/ccacd0b477439e32514d5c56bf2c1b9ef035e0ca)), closes [#27](https://github.com/jwulf/camunda-process-test-js/issues/27)
+
 # [1.10.0](https://github.com/jwulf/camunda-process-test-js/compare/v1.9.0...v1.10.0) (2025-07-29)
 
 
