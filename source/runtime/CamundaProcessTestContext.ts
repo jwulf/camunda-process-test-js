@@ -32,13 +32,14 @@ interface TrackedResource {
 export class CamundaProcessTestContext {
 	private currentTime: Date = new Date()
 	private jobWorkers: JobWorkerMock[] = []
-	private deployedProcesses: string[] = []
 	private clock: CamundaClock
 	private trackedResourceKeys: Set<string> = new Set()
 	private trackedResources: TrackedResource[] = []
 	private trackedProcessInstances: Set<string> = new Set()
 	private trackedGrpcWorkers: Array<{ close(): void }> = []
 	private trackedJobWorkers: Array<{ stop(): void }> = []
+	private trackedZeebeGrpcClients: Array<{ close(): Promise<null> }> = []
+	private isInSetup: boolean = true
 
 	constructor(
 		private runtime: CamundaProcessTestRuntime,
@@ -46,6 +47,8 @@ export class CamundaProcessTestContext {
 	) {
 		this.clock = new CamundaClock(runtime)
 		this.setupWorkerCreationHooks()
+		// Mark setup as complete - only track clients created after this point
+		this.isInSetup = false
 	}
 
 	/**
@@ -53,6 +56,22 @@ export class CamundaProcessTestContext {
 	 */
 	private setupWorkerCreationHooks(): void {
 		debugWorker('🔧 Setting up worker creation hooks...')
+
+		// Hook ZeebeGrpcClient creation
+		const originalGetZeebeGrpcApiClient =
+			this.client.getZeebeGrpcApiClient.bind(this.client)
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		;(this.client as any).getZeebeGrpcApiClient = (...args: any[]) => {
+			debugWorker('🎣 Intercepted ZeebeGrpcClient creation')
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			const zeebeClient = originalGetZeebeGrpcApiClient.apply(
+				this.client,
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any
+				args as any
+			)
+			this.registerZeebeGrpcClient(zeebeClient)
+			return zeebeClient
+		}
 
 		// Hook gRPC worker creation
 		const grpcClient = this.client.getZeebeGrpcApiClient()
@@ -393,6 +412,24 @@ export class CamundaProcessTestContext {
 	}
 
 	/**
+	 * Registers a ZeebeGrpcClient for automatic cleanup.
+	 * Called automatically when clients are created via the test client.
+	 */
+	registerZeebeGrpcClient(client: { close(): Promise<null> }): void {
+		// Only track clients created during test execution, not during setup
+		if (this.isInSetup) {
+			debugWorker('🔧 Skipping registration of setup ZeebeGrpcClient')
+			return
+		}
+
+		this.trackedZeebeGrpcClients.push(client)
+		debugWorker(
+			'📝 Registered ZeebeGrpcClient for cleanup (total: %d)',
+			this.trackedZeebeGrpcClients.length
+		)
+	}
+
+	/**
 	 * Increases the current time by the specified duration.
 	 * This affects timers and scheduled tasks in processes.
 	 *
@@ -484,6 +521,9 @@ export class CamundaProcessTestContext {
 		// Stop tracked workers
 		this.stopTrackedWorkers()
 
+		// Close tracked ZeebeGrpcClients
+		await this.stopTrackedZeebeGrpcClients()
+
 		// Clear resource tracking (but don't delete resources - that's for cleanupTestData)
 		this.trackedResources = []
 		this.trackedResourceKeys.clear()
@@ -503,6 +543,9 @@ export class CamundaProcessTestContext {
 
 		// Stop tracked workers
 		this.stopTrackedWorkers()
+
+		// Close tracked ZeebeGrpcClients
+		await this.stopTrackedZeebeGrpcClients()
 
 		// Cancel tracked process instances before deleting resources
 		await this.cleanupTrackedProcessInstances()
@@ -539,6 +582,44 @@ export class CamundaProcessTestContext {
 			}
 		}
 		this.trackedJobWorkers = []
+	}
+
+	private async stopTrackedZeebeGrpcClients(): Promise<void> {
+		if (this.trackedZeebeGrpcClients.length === 0) {
+			debugCleanup('No tracked ZeebeGrpcClients to close')
+			return
+		}
+
+		debugCleanup(
+			'🔄 Closing %d tracked ZeebeGrpcClients...',
+			this.trackedZeebeGrpcClients.length
+		)
+
+		const closeErrors: string[] = []
+
+		for (const client of this.trackedZeebeGrpcClients) {
+			try {
+				debugCleanup('🔒 Closing ZeebeGrpcClient...')
+				await client.close()
+				debugCleanup('✅ Closed ZeebeGrpcClient')
+			} catch (error) {
+				const errorMessage = `Failed to close ZeebeGrpcClient: ${error}`
+				closeErrors.push(errorMessage)
+				debugCleanup('❌ %s', errorMessage)
+			}
+		}
+
+		// Clear tracking array
+		this.trackedZeebeGrpcClients = []
+
+		debugCleanup(
+			'🔄 ZeebeGrpcClient closure completed. %d errors occurred.',
+			closeErrors.length
+		)
+
+		if (closeErrors.length > 0) {
+			logCleanup('❌ ZeebeGrpcClient closure errors: %o', closeErrors)
+		}
 	}
 
 	private async cleanupTrackedProcessInstances(): Promise<void> {
