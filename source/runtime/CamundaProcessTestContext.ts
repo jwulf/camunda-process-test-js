@@ -107,7 +107,7 @@ export class CamundaProcessTestContext {
 
 	/**
 	 * Creates and starts a process instance with automatic tracking for cleanup.
-	 * Process instances are automatically cancelled in REMOTE mode during test cleanup.
+	 * Process instances are automatically cancelled during test cleanup.
 	 *
 	 * @param request Process instance creation request
 	 * @returns The created process instance response
@@ -118,7 +118,7 @@ export class CamundaProcessTestContext {
 		const camunda = this.client.getCamundaRestClient()
 		const response = await camunda.createProcessInstance(request)
 
-		// Track process instance for cleanup in REMOTE mode
+		// Track process instance for cleanup
 		this.trackProcessInstance(response)
 
 		return response
@@ -126,7 +126,7 @@ export class CamundaProcessTestContext {
 
 	/**
 	 * Creates and starts a process instance and awaits its completion with automatic tracking.
-	 * Process instances are automatically cancelled in REMOTE mode during test cleanup if still running.
+	 * Process instances are automatically cancelled during test cleanup if still running.
 	 *
 	 * @param request Process instance creation request with result configuration
 	 * @returns The completed process instance response with variables
@@ -137,7 +137,7 @@ export class CamundaProcessTestContext {
 		const camunda = this.client.getCamundaRestClient()
 		const response = await camunda.createProcessInstanceWithResult(request)
 
-		// Track process instance for cleanup in REMOTE mode (in case it's still running)
+		// Track process instance for cleanup (in case it's still running)
 		this.trackProcessInstance(response)
 
 		return response
