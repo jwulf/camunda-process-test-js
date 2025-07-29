@@ -1,3 +1,10 @@
+# [1.10.0](https://github.com/jwulf/camunda-process-test-js/compare/v1.9.0...v1.10.0) (2025-07-29)
+
+
+### Features
+
+* add auto-generated API documentation ([2c50c8c](https://github.com/jwulf/camunda-process-test-js/commit/2c50c8c062b14f930d8a66353197f1c9ba9fc002))
+
 # [1.9.0](https://github.com/jwulf/camunda-process-test-js/compare/v1.8.0...v1.9.0) (2025-07-29)
 
 
