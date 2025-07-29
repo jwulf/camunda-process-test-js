@@ -1,4 +1,4 @@
-import { Camunda8 } from '@camunda8/sdk'
+import { Camunda8, CamundaRestClient, PollingOperation } from '@camunda8/sdk'
 import Debug from 'debug'
 
 import { CamundaClock } from './CamundaClock'
@@ -8,8 +8,21 @@ import { JobWorkerMock } from './JobWorkerMock'
 const debug = Debug('camunda:test:context')
 const debugDeploy = Debug('camunda:test:deploy')
 const debugWorker = Debug('camunda:test:worker')
+const debugCleanup = Debug('camunda:test:cleanup')
+const logCleanup = Debug('camunda:test:cleanup')
+logCleanup.enabled = true
 const clockWarn = Debug('camunda:test:clock')
 clockWarn.enabled = true
+
+interface TrackedResource {
+	filePath: string
+	key: string
+	type:
+		| 'process definition'
+		| 'decision definition'
+		| 'decisionRequirements definition'
+		| 'form'
+}
 
 /**
  * Test context that provides utilities and manages test state.
@@ -20,12 +33,23 @@ export class CamundaProcessTestContext {
 	private jobWorkers: JobWorkerMock[] = []
 	private deployedProcesses: string[] = []
 	private clock: CamundaClock
+	private trackedResourceKeys: Set<string> = new Set()
+	private trackedResources: TrackedResource[] = []
+	private trackedProcessInstances: Set<string> = new Set()
 
 	constructor(
 		private runtime: CamundaProcessTestRuntime,
 		protected client: Camunda8
 	) {
 		this.clock = new CamundaClock(runtime)
+	}
+
+	/**
+	 * Gets the runtime mode for the current test environment.
+	 * @returns 'MANAGED' for Docker containers, 'REMOTE' for SaaS/Cloud/self-managed
+	 */
+	getRuntimeMode(): 'MANAGED' | 'REMOTE' {
+		return this.runtime.getRuntimeMode()
 	}
 
 	/**
@@ -50,59 +74,248 @@ export class CamundaProcessTestContext {
 	}
 
 	/**
-	 * Gets the current runtime mode (MANAGED or REMOTE).
-	 * Useful for writing differential test behavior based on the runtime environment.
+	 * Deploys resources (BPMN processes, DMN decisions, forms) from file paths.
+	 *
+	 * @param resourcePaths Array of file paths to deploy
+	 * @param options Optional configuration for automatic resource cleanup
+	 * @returns The deployment response from Camunda
 	 */
-	getRuntimeMode(): 'MANAGED' | 'REMOTE' {
-		return this.runtime.getRuntimeMode()
-	}
-
-	/**
-	 * Deploys a BPMN process from a file path.
-	 */
-	async deployProcess(resourcePath: string, processId?: string): Promise<void> {
-		debugDeploy('📋 Deploying BPMN process from: %s', resourcePath)
+	async deployResources(
+		resourcePaths: string[],
+		options?: { autoDelete?: boolean }
+	) {
+		const shouldAutoDelete = options?.autoDelete ?? false
+		debugDeploy('📋 Deploying resources: %o', resourcePaths)
+		debugDeploy('�️ Auto-delete enabled: %s', shouldAutoDelete)
 
 		const camunda = this.client.getCamundaRestClient()
 		debugDeploy('🚀 Sending deployment request...')
 
-		const response = await camunda.deployResourcesFromFiles([resourcePath])
+		const response = await camunda.deployResourcesFromFiles(resourcePaths)
 
-		if (processId) {
-			this.deployedProcesses.push(processId)
-			debugDeploy('📝 Tracking process ID: %s', processId)
+		// Validate deployment results
+		this.validateDeploymentResponse(response, resourcePaths)
+
+		// Track resources if auto-delete is requested
+		if (shouldAutoDelete) {
+			this.trackDeployedResources(response, resourcePaths)
 		}
 
-		// TODO: Should we throw if no process is deployed?
-		// TODO: Do we allow multiple processes to be deployed at once?
-		const deployment = response.processes[0] ?? {}
-		debugDeploy('✅ Process deployed successfully')
+		debugDeploy('✅ Resources deployed successfully')
+		return response
+	}
+
+	/**
+	 * Creates and starts a process instance with automatic tracking for cleanup.
+	 * Process instances are automatically cancelled during test cleanup.
+	 *
+	 * @param request Process instance creation request
+	 * @returns The created process instance response
+	 */
+	async createProcessInstance(
+		request: Parameters<CamundaRestClient['createProcessInstance']>[0]
+	) {
+		const camunda = this.client.getCamundaRestClient()
+		const response = await camunda.createProcessInstance(request)
+
+		// Track process instance for cleanup
+		this.trackProcessInstance(response)
+
+		return response
+	}
+
+	/**
+	 * Creates and starts a process instance and awaits its completion with automatic tracking.
+	 * Process instances are automatically cancelled during test cleanup if still running.
+	 *
+	 * @param request Process instance creation request with result configuration
+	 * @returns The completed process instance response with variables
+	 */
+	async createProcessInstanceWithResult(
+		request: Parameters<CamundaRestClient['createProcessInstanceWithResult']>[0]
+	) {
+		const camunda = this.client.getCamundaRestClient()
+		const response = await camunda.createProcessInstanceWithResult(request)
+
+		// Track process instance for cleanup (in case it's still running)
+		this.trackProcessInstance(response)
+
+		return response
+	}
+
+	private trackProcessInstance(response: { processInstanceKey?: string }) {
+		if (response.processInstanceKey) {
+			this.trackedProcessInstances.add(response.processInstanceKey)
+			debugDeploy(
+				'📝 Tracked process instance: %s',
+				response.processInstanceKey
+			)
+		}
+	}
+
+	private validateDeploymentResponse(
+		response: Awaited<
+			ReturnType<CamundaRestClient['deployResourcesFromFiles']>
+		>,
+		resourcePaths: string[]
+	): void {
+		const totalDeployedResources =
+			(response.processes?.length || 0) +
+			(response.decisions?.length || 0) +
+			(response.decisionRequirements?.length || 0) +
+			(response.forms?.length || 0)
+
+		if (totalDeployedResources === 0) {
+			throw new Error('No resources were deployed from the provided files')
+		}
+
+		debugDeploy('📊 Deployment results:')
+		debugDeploy('- Processes: %d', response.processes?.length || 0)
+		debugDeploy('- Decisions: %d', response.decisions?.length || 0)
 		debugDeploy(
-			'📍 Process Definition Key: %s',
-			deployment.processDefinitionKey
+			'- Decision Requirements: %d',
+			response.decisionRequirements?.length || 0
 		)
-		debugDeploy('📍 Process Definition Id: %s', deployment.processDefinitionId)
-		debugDeploy('📍 Version: %d', deployment.processDefinitionVersion)
-		debugDeploy('📍 Resource Name: %s', deployment.resourceName)
+		debugDeploy('- Forms: %d', response.forms?.length || 0)
+		debugDeploy('- Total resources deployed: %d', totalDeployedResources)
+		debugDeploy('- Resource files provided: %d', resourcePaths.length)
+	}
+
+	private trackDeployedResources(
+		response: Awaited<
+			ReturnType<CamundaRestClient['deployResourcesFromFiles']>
+		>,
+		resourcePaths: string[]
+	): void {
+		debugDeploy('📝 Tracking deployed resources for auto-deletion...')
+
+		// Track processes
+		response.processes?.forEach(
+			(
+				process: { processDefinitionKey: string; resourceName: string },
+				index: number
+			) => {
+				if (process.processDefinitionKey) {
+					this.trackedResourceKeys.add(process.processDefinitionKey)
+					this.trackedResources.push({
+						filePath: this.inferResourcePath(resourcePaths, 'process', index),
+						key: process.processDefinitionKey,
+						type: 'process definition',
+					})
+					debugDeploy(
+						'📝 Tracked process: %s (%s)',
+						process.processDefinitionKey,
+						process.resourceName
+					)
+				}
+			}
+		)
+
+		// Track decisions
+		response.decisions?.forEach(
+			(
+				decision: { decisionDefinitionKey: string; name: string },
+				index: number
+			) => {
+				if (decision.decisionDefinitionKey) {
+					this.trackedResourceKeys.add(decision.decisionDefinitionKey)
+					this.trackedResources.push({
+						filePath: this.inferResourcePath(resourcePaths, 'decision', index),
+						key: decision.decisionDefinitionKey,
+						type: 'decision definition',
+					})
+					debugDeploy(
+						'📝 Tracked decision: %s (%s)',
+						decision.decisionDefinitionKey,
+						decision.name
+					)
+				}
+			}
+		)
+
+		// Track decision requirements
+		response.decisionRequirements?.forEach(
+			(dr: { decisionRequirementsKey: string }, index: number) => {
+				if (dr.decisionRequirementsKey) {
+					this.trackedResourceKeys.add(dr.decisionRequirementsKey)
+					this.trackedResources.push({
+						filePath: this.inferResourcePath(
+							resourcePaths,
+							'decisionRequirements',
+							index
+						),
+						key: dr.decisionRequirementsKey,
+						type: 'decisionRequirements definition',
+					})
+					debugDeploy(
+						'📝 Tracked decision requirements: %s',
+						dr.decisionRequirementsKey
+					)
+				}
+			}
+		)
+
+		// Track forms
+		response.forms?.forEach((form: { formKey: string }, index: number) => {
+			if (form.formKey) {
+				this.trackedResourceKeys.add(form.formKey)
+				this.trackedResources.push({
+					filePath: this.inferResourcePath(resourcePaths, 'form', index),
+					key: form.formKey,
+					type: 'form',
+				})
+				debugDeploy('📝 Tracked form: %s', form.formKey)
+			}
+		})
+
+		debugDeploy(
+			'📊 Total tracked resource keys: %d',
+			this.trackedResourceKeys.size
+		)
+		debugDeploy('📊 Total tracked resources: %d', this.trackedResources.length)
+	}
+
+	private inferResourcePath(
+		resourcePaths: string[],
+		resourceType: string,
+		index: number
+	): string {
+		// Try to find a matching file extension for the resource type
+		const extensions: Record<string, string[]> = {
+			process: ['.bpmn'],
+			decision: ['.dmn'],
+			decisionRequirements: ['.dmn', '.drd'],
+			form: ['.form'],
+		}
+
+		const relevantExtensions = extensions[resourceType] || []
+		const matchingPaths = resourcePaths.filter((path) =>
+			relevantExtensions.some((ext) => path.toLowerCase().endsWith(ext))
+		)
+
+		// Return the matching path at the given index, or fall back to the original index
+		return (
+			matchingPaths[index] ||
+			resourcePaths[index] ||
+			`unknown-${resourceType}-${index}`
+		)
+	}
+
+	/**
+	 * Deploys a BPMN process from a file path.
+	 * @deprecated Use deployResources([resourcePath]) instead.
+	 * Example: await deployResources(["path/to/process.bpmn"]);
+	 */
+	async deployProcess(resourcePath: string) {
+		return this.deployResources([resourcePath])
 	}
 
 	/**
 	 * Deploys a DMN decision from a file path.
+	 * @deprecated Use deployResources([resourcePath]) instead.
 	 */
-	async deployDecision(resourcePath: string): Promise<void> {
-		debugDeploy('📊 Deploying DMN decision from: %s', resourcePath)
-
-		const camunda = this.client.getCamundaRestClient()
-		debugDeploy('🚀 Sending decision deployment request...')
-
-		const response = await camunda.deployResourcesFromFiles([resourcePath])
-
-		const deployment = response.decisions[0] ?? {}
-		debugDeploy('✅ Decision deployed successfully')
-		debugDeploy('📍 Decision Key: %s', deployment.decisionKey)
-		debugDeploy('📍 Decision ID: %s', deployment.decisionDefinitionId)
-		debugDeploy('📍 Decision Name: %s', deployment.name)
-		debugDeploy('📍 Version: %d', deployment.version)
+	async deployDecision(resourcePath: string) {
+		return this.deployResources([resourcePath])
 	}
 
 	/**
@@ -207,6 +420,11 @@ export class CamundaProcessTestContext {
 			worker.stop()
 		}
 		this.jobWorkers = []
+
+		// Clear resource tracking (but don't delete resources - that's for cleanupTestData)
+		this.trackedResources = []
+		this.trackedResourceKeys.clear()
+		this.trackedProcessInstances.clear()
 	}
 
 	/**
@@ -215,13 +433,111 @@ export class CamundaProcessTestContext {
 	async cleanupTestData(): Promise<void> {
 		debug('Cleaning up test data')
 
-		// In a real implementation, this would:
-		// - Cancel running process instances
-		// - Clear job workers
-		// - Reset Zeebe state
-		// For now, we just stop job workers
+		// Stop job workers first
 		for (const worker of this.jobWorkers) {
 			worker.stop()
+		}
+
+		// Cancel tracked process instances before deleting resources
+		await this.cleanupTrackedProcessInstances()
+
+		// Clean up tracked resources
+		await this.cleanupTrackedResources()
+	}
+
+	private async cleanupTrackedProcessInstances(): Promise<void> {
+		if (this.trackedProcessInstances.size === 0) {
+			debugCleanup('No tracked process instances to cancel')
+			return
+		}
+
+		debugCleanup(
+			'🔄 Cancelling %d tracked process instances...',
+			this.trackedProcessInstances.size
+		)
+
+		const camunda = this.client.getCamundaRestClient()
+		const cancelErrors: string[] = []
+
+		for (const processInstanceKey of this.trackedProcessInstances) {
+			try {
+				debugCleanup('⏹️ Cancelling process instance: %s', processInstanceKey)
+				await camunda.cancelProcessInstance({
+					processInstanceKey,
+				})
+				debugCleanup('✅ Cancelled process instance: %s', processInstanceKey)
+			} catch (error) {
+				const errorMessage = `Failed to cancel process instance ${processInstanceKey}: ${error}`
+				cancelErrors.push(errorMessage)
+				debugCleanup('❌ %s', errorMessage)
+			}
+		}
+
+		// Clear tracking set
+		this.trackedProcessInstances.clear()
+
+		debugCleanup(
+			'🔄 Process instance cancellation completed. %d errors occurred.',
+			cancelErrors.length
+		)
+
+		if (cancelErrors.length > 0) {
+			logCleanup('❌ Process instance cancellation errors: %o', cancelErrors)
+		}
+	}
+
+	private async cleanupTrackedResources(): Promise<void> {
+		if (this.trackedResources.length === 0) {
+			debugCleanup('No tracked resources to clean up')
+			return
+		}
+
+		debugCleanup(
+			'🧹 Cleaning up %d tracked resources...',
+			this.trackedResources.length
+		)
+
+		const camunda = this.client.getCamundaRestClient()
+		const cleanupErrors: string[] = []
+
+		for (const resource of this.trackedResources) {
+			try {
+				debugCleanup('🗑️ Deleting %s: %s', resource.type, resource.key)
+
+				// We use a polling operation to ensure the resource is deleted
+				// Until all process instances are cancelled, we cannot delete the process definition
+				await PollingOperation({
+					operation: () =>
+						camunda
+							.deleteResource({
+								resourceKey: resource.key,
+							})
+							.then(() => true)
+							.catch(() => false),
+					predicate: (deleted) => deleted === true,
+					interval: 500,
+					timeout: 4000,
+				})
+
+				debugCleanup('✅ Deleted %s: %s', resource.type, resource.key)
+			} catch (error) {
+				const errorMessage = `Failed to delete ${resource.type} ${resource.key}: ${error}`
+				cleanupErrors.push(errorMessage)
+				debugCleanup('❌ %s', errorMessage)
+			}
+		}
+
+		// Clear tracking arrays
+		this.trackedResources = []
+		this.trackedResourceKeys.clear()
+
+		debugCleanup(
+			'🧹 Cleanup completed. %d errors occurred.',
+			cleanupErrors.length
+		)
+
+		if (cleanupErrors.length > 0) {
+			logCleanup('❌ Cleanup errors: %o', cleanupErrors)
 		}
 	}
 
