@@ -1,4 +1,5 @@
-import { Camunda8, CamundaRestClient, PollingOperation } from '@camunda8/sdk'
+import type { CamundaRestApiTypes } from '@camunda8/sdk'
+import { Camunda8, Dto, PollingOperation } from '@camunda8/sdk'
 import Debug from 'debug'
 
 import { CamundaClock } from './CamundaClock'
@@ -113,7 +114,7 @@ export class CamundaProcessTestContext {
 	 * @returns The created process instance response
 	 */
 	async createProcessInstance(
-		request: Parameters<CamundaRestClient['createProcessInstance']>[0]
+		request: CamundaRestApiTypes.CreateProcessInstanceRequest<never>
 	) {
 		const camunda = this.client.getCamundaRestClient()
 		const response = await camunda.createProcessInstance(request)
@@ -131,9 +132,12 @@ export class CamundaProcessTestContext {
 	 * @param request Process instance creation request with result configuration
 	 * @returns The completed process instance response with variables
 	 */
-	async createProcessInstanceWithResult(
-		request: Parameters<CamundaRestClient['createProcessInstanceWithResult']>[0]
-	) {
+	async createProcessInstanceWithResult<
+		T extends typeof Dto.LosslessDto | Record<string, unknown> = Record<
+			string,
+			unknown
+		>,
+	>(request: CamundaRestApiTypes.CreateProcessInstanceRequest<T>) {
 		const camunda = this.client.getCamundaRestClient()
 		const response = await camunda.createProcessInstanceWithResult(request)
 
@@ -154,9 +158,7 @@ export class CamundaProcessTestContext {
 	}
 
 	private validateDeploymentResponse(
-		response: Awaited<
-			ReturnType<CamundaRestClient['deployResourcesFromFiles']>
-		>,
+		response: CamundaRestApiTypes.DeployResourceResponse,
 		resourcePaths: string[]
 	): void {
 		const totalDeployedResources =
@@ -182,9 +184,7 @@ export class CamundaProcessTestContext {
 	}
 
 	private trackDeployedResources(
-		response: Awaited<
-			ReturnType<CamundaRestClient['deployResourcesFromFiles']>
-		>,
+		response: CamundaRestApiTypes.DeployResourceResponse,
 		resourcePaths: string[]
 	): void {
 		debugDeploy('📝 Tracking deployed resources for auto-deletion...')
