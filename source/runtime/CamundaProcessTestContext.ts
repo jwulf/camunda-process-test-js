@@ -37,12 +37,48 @@ export class CamundaProcessTestContext {
 	private trackedResourceKeys: Set<string> = new Set()
 	private trackedResources: TrackedResource[] = []
 	private trackedProcessInstances: Set<string> = new Set()
+	private trackedGrpcWorkers: Array<{ close(): void }> = []
+	private trackedJobWorkers: Array<{ stop(): void }> = []
 
 	constructor(
 		private runtime: CamundaProcessTestRuntime,
 		protected client: Camunda8
 	) {
 		this.clock = new CamundaClock(runtime)
+		this.setupWorkerCreationHooks()
+	}
+
+	/**
+	 * Sets up hooks to automatically register workers created via the client.
+	 */
+	private setupWorkerCreationHooks(): void {
+		debugWorker('🔧 Setting up worker creation hooks...')
+
+		// Hook gRPC worker creation
+		const grpcClient = this.client.getZeebeGrpcApiClient()
+		const originalCreateWorker = grpcClient.createWorker.bind(grpcClient)
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		;(grpcClient as any).createWorker = (...args: any[]) => {
+			debugWorker('🎣 Intercepted gRPC worker creation')
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			const worker = originalCreateWorker.apply(grpcClient, args as any)
+			this.registerGrpcWorker(worker)
+			return worker
+		}
+
+		// Hook REST job worker creation
+		const restClient = this.client.getCamundaRestClient()
+		const originalCreateJobWorker = restClient.createJobWorker.bind(restClient)
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		;(restClient as any).createJobWorker = (...args: any[]) => {
+			debugWorker('🎣 Intercepted job worker creation')
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			const worker = originalCreateJobWorker.apply(restClient, args as any)
+			this.registerJobWorker(worker)
+			return worker
+		}
+
+		debugWorker('✅ Worker creation hooks installed')
 	}
 
 	/**
@@ -113,9 +149,9 @@ export class CamundaProcessTestContext {
 	 * @param request Process instance creation request
 	 * @returns The created process instance response
 	 */
-	async createProcessInstance(
-		request: CamundaRestApiTypes.CreateProcessInstanceRequest<never>
-	) {
+	async createProcessInstance<
+		T extends typeof Dto.LosslessDto | Record<string, unknown>,
+	>(request: CamundaRestApiTypes.CreateProcessInstanceRequest<T>) {
 		const camunda = this.client.getCamundaRestClient()
 		const response = await camunda.createProcessInstance(request)
 
@@ -333,6 +369,30 @@ export class CamundaProcessTestContext {
 	}
 
 	/**
+	 * Registers a gRPC worker for automatic cleanup.
+	 * Called automatically when workers are created via the test client.
+	 */
+	registerGrpcWorker(worker: { close(): void }): void {
+		this.trackedGrpcWorkers.push(worker)
+		debugWorker(
+			'📝 Registered gRPC worker for cleanup (total: %d)',
+			this.trackedGrpcWorkers.length
+		)
+	}
+
+	/**
+	 * Registers a job worker for automatic cleanup.
+	 * Called automatically when workers are created via the test client.
+	 */
+	registerJobWorker(worker: { stop(): void }): void {
+		this.trackedJobWorkers.push(worker)
+		debugWorker(
+			'📝 Registered job worker for cleanup (total: %d)',
+			this.trackedJobWorkers.length
+		)
+	}
+
+	/**
 	 * Increases the current time by the specified duration.
 	 * This affects timers and scheduled tasks in processes.
 	 *
@@ -421,6 +481,9 @@ export class CamundaProcessTestContext {
 		}
 		this.jobWorkers = []
 
+		// Stop tracked workers
+		this.stopTrackedWorkers()
+
 		// Clear resource tracking (but don't delete resources - that's for cleanupTestData)
 		this.trackedResources = []
 		this.trackedResourceKeys.clear()
@@ -438,11 +501,44 @@ export class CamundaProcessTestContext {
 			worker.stop()
 		}
 
+		// Stop tracked workers
+		this.stopTrackedWorkers()
+
 		// Cancel tracked process instances before deleting resources
 		await this.cleanupTrackedProcessInstances()
 
 		// Clean up tracked resources
 		await this.cleanupTrackedResources()
+	}
+
+	private stopTrackedWorkers(): void {
+		debugCleanup(
+			'🔄 Stopping %d tracked gRPC workers...',
+			this.trackedGrpcWorkers.length
+		)
+		for (const worker of this.trackedGrpcWorkers) {
+			try {
+				worker.close()
+				debugCleanup('✅ Closed gRPC worker')
+			} catch (error) {
+				debugCleanup('❌ Error closing gRPC worker: %s', error)
+			}
+		}
+		this.trackedGrpcWorkers = []
+
+		debugCleanup(
+			'🔄 Stopping %d tracked job workers...',
+			this.trackedJobWorkers.length
+		)
+		for (const worker of this.trackedJobWorkers) {
+			try {
+				worker.stop()
+				debugCleanup('✅ Stopped job worker')
+			} catch (error) {
+				debugCleanup('❌ Error stopping job worker: %s', error)
+			}
+		}
+		this.trackedJobWorkers = []
 	}
 
 	private async cleanupTrackedProcessInstances(): Promise<void> {

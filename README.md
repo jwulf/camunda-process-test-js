@@ -12,6 +12,7 @@ A comprehensive testing framework for Camunda process automation in Node.js/Type
 - 🔍 **Rich Assertions**: Fluent API for verifying process execution, user tasks, and decisions
 - 🎭 **Job Worker Mocking**: Powerful mocking capabilities for service tasks
 - 🔧 **gRPC Worker Support**: Test external workers connecting via Zeebe gRPC API
+- 🤖 **Automatic Worker Management**: Zero-configuration worker lifecycle management - no manual cleanup needed
 - ⏰ **Time Control**: Full control over Zeebe's internal clock for testing timers and timeouts
 - 🔧 **TypeScript Support**: Full TypeScript support with type definitions
 - 🧪 **Jest Integration**: Seamless integration with Jest testing framework
@@ -687,9 +688,9 @@ test('should process jobs with external gRPC worker', async () => {
   // Deploy process with service task
   await context.deployResources(['./processes/worker-process.bpmn']);
 
-  // Create external gRPC worker
+  // Create external gRPC worker - automatically managed by framework
   const grpcClient = client.getZeebeGrpcApiClient();
-  const worker = grpcClient.createWorker({
+  grpcClient.createWorker({
     taskType: 'external-task',
     taskHandler: (job) => {
       // Process the job
@@ -701,25 +702,62 @@ test('should process jobs with external gRPC worker', async () => {
     }
   });
 
-  try {
-    // Start process instance
-    const camunda = client.getCamundaRestClient();
-    const processInstance = await camunda.createProcessInstance({
-      processDefinitionId: 'worker-process',
-      variables: { input: 'test-data' }
-    });
+  // Start process instance
+  const camunda = client.getCamundaRestClient();
+  const processInstance = await camunda.createProcessInstance({
+    processDefinitionId: 'worker-process',
+    variables: { input: 'test-data' }
+  });
 
-    // Verify process completion
-    const assertion = CamundaAssert.assertThat(processInstance);
-    await assertion.isCompleted();
-    await assertion.hasVariables({
-      output: 'Processed: test-data'
-    });
-  } finally {
-    worker.close();
-  }
+  // Verify process completion
+  const assertion = CamundaAssert.assertThat(processInstance);
+  await assertion.isCompleted();
+  await assertion.hasVariables({
+    output: 'Processed: test-data'
+  });
+
+  // Worker is automatically closed by the framework during test cleanup
+});
 });
 ```
+
+#### Automatic Worker Lifecycle Management
+
+The framework automatically manages the lifecycle of both gRPC and REST job workers:
+
+**Automatic Registration & Cleanup:**
+- Workers created via `client.getZeebeGrpcApiClient().createWorker()` are automatically registered
+- Workers created via `client.getCamundaRestClient().createJobWorker()` are automatically registered  
+- All registered workers are automatically closed/stopped during test cleanup
+- No need for manual `worker.close()` or `worker.stop()` calls
+- No need for try/finally blocks around worker creation
+
+**Before (Manual Lifecycle Management):**
+```typescript
+const worker = grpcClient.createWorker(config);
+try {
+  // test logic
+} finally {
+  worker.close(); // Manual cleanup required
+}
+```
+
+**After (Automatic Lifecycle Management):**
+```typescript
+grpcClient.createWorker(config);
+// test logic - worker automatically cleaned up by framework!
+```
+
+**Debug Worker Lifecycle:**
+Monitor automatic worker management with debug logging:
+```bash
+DEBUG=camunda:test:worker,camunda:test:cleanup npm test
+```
+
+This will show:
+- `🎣 Intercepted gRPC worker creation` - Worker creation detected
+- `📝 Registered gRPC worker for cleanup` - Worker registered for cleanup
+- `✅ Closed gRPC worker` - Worker automatically closed
 
 #### gRPC Configuration
 
@@ -729,7 +767,7 @@ For **REMOTE** mode with external Zeebe clusters:
 {
   "runtimeMode": "REMOTE",
   "zeebeRestAddress": "https://cluster.region.zeebe.camunda.io:443",
-  "zeebeGrpcAddress": "grpc://cluster.region.zeebe.camunda.io:443",
+  "zeebeGrpcAddress": "grpcs://cluster.region.zeebe.camunda.io:443",
   "zeebeClientId": "your-client-id",
   "zeebeClientSecret": "your-client-secret"
 }
@@ -1188,6 +1226,12 @@ DEBUG=camunda:test:deploy npm test
 # Monitor runtime problems
 DEBUG=camunda:test:runtime npm test
 
+# Debug worker lifecycle management
+DEBUG=camunda:test:worker npm test
+
+# Monitor test cleanup operations
+DEBUG=camunda:test:cleanup npm test
+
 # Capture container logs for detailed inspection
 DEBUG=camunda:test:logs npm test
 # Then check ./camunda-test-logs/ for detailed container logs
@@ -1229,6 +1273,13 @@ DEBUG=camunda:test:logs npm test
 
 #### Job Worker Mocking
 - **`mockJobWorker(jobType)`**: Create a mock job worker for the specified job type
+
+#### Automatic Worker Management
+- **gRPC Workers**: Workers created via `client.getZeebeGrpcApiClient().createWorker()` are automatically registered and closed
+- **REST Job Workers**: Workers created via `client.getCamundaRestClient().createJobWorker()` are automatically registered and stopped
+- **Lifecycle Management**: All workers are automatically cleaned up during test teardown
+- **No Manual Cleanup**: No need for try/finally blocks or manual `worker.close()` calls
+- **Debug Support**: Use `DEBUG=camunda:test:worker` to monitor worker registration and cleanup
 
 #### Time Control
 - **`increaseTime(duration)`**: Advance Zeebe's internal clock
