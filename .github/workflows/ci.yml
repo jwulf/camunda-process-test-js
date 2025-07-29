@@ -115,8 +115,18 @@ jobs:
       - name: Build project
         run: npm run build
 
+      - name: Generate API documentation
+        run: npm run build:docs
+
       - name: Run semantic release
         run: HUSKY=0 npx semantic-release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Deploy Docs
+        if: github.ref == 'refs/heads/main'
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          folder: docs
+          branch: gh-pages

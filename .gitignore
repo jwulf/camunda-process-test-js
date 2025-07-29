@@ -143,6 +143,9 @@ distribution
 # Camunda test logs
 camunda-test-logs/
 
+# Generated documentation
+docs/
+
 .vscode
 
 .DS_Store
