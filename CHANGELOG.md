@@ -1,3 +1,10 @@
+# [1.9.0](https://github.com/jwulf/camunda-process-test-js/compare/v1.8.0...v1.9.0) (2025-07-29)
+
+
+### Features
+
+* track and optionally delete deployed resources ([768eaf8](https://github.com/jwulf/camunda-process-test-js/commit/768eaf878f58722d8812f54fe411aca18c15d88c))
+
 # [1.8.0](https://github.com/jwulf/camunda-process-test-js/compare/v1.7.0...v1.8.0) (2025-07-28)
 
 
