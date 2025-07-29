@@ -22,6 +22,7 @@ npm run examples
 | [`simple.test.ts`](simple.test.ts) | Basic process testing | Quick start, single process |
 | [`debug.test.ts`](debug.test.ts) | Debug mode demonstration | Troubleshooting, container inspection |
 | [`basic-test.test.ts`](basic-test.test.ts) | Comprehensive examples | Multiple patterns, decorator/function approaches |
+| [`resource-cleanup.test.ts`](resource-cleanup.test.ts) | Auto-cleanup demonstration | REMOTE mode testing, resource management |
 | [`runtime-mode.test.ts`](runtime-mode.test.ts) | Runtime mode detection | Differential behavior for MANAGED vs REMOTE |
 | [`runtime-mode-decorator.test.ts`](runtime-mode-decorator.test.ts) | Runtime mode (decorator) | Decorator approach for runtime detection |
 
@@ -166,7 +167,38 @@ npm run examples:simple
 
 ---
 
-### 2. Debug Example (`debug.test.ts`)
+### 2. Resource Cleanup Example (`resource-cleanup.test.ts`)
+
+**Purpose**: Demonstrates automatic resource cleanup in REMOTE mode environments.
+
+**What it does**:
+- Uses `deployResources()` with `autoDelete: true` option
+- Shows resource cleanup behavior in different runtime modes
+- Demonstrates multiple resource type deployment
+- Tests resource tracking and automatic deletion
+
+**Key features**:
+- **Auto-cleanup**: Resources automatically deleted after tests in REMOTE mode
+- **Runtime awareness**: Different behavior for MANAGED vs REMOTE environments  
+- **Multiple resources**: Deploy BPMN, DMN, and Form files together
+- **Debug visibility**: Shows cleanup operations in debug output
+
+**Run it**:
+```bash
+npm test examples/resource-cleanup.test.ts
+
+# With cleanup debugging
+DEBUG=camunda:test:cleanup npm test examples/resource-cleanup.test.ts
+```
+
+**Expected output**: 
+- ✅ Resources deployed with auto-delete tracking (REMOTE mode)
+- ✅ Resources skipped for tracking (MANAGED mode - container recycled)
+- 🧹 Cleanup operations visible in debug output
+
+---
+
+### 3. Debug Example (`debug.test.ts`)
 
 **Purpose**: Shows how to use debug mode for troubleshooting and inspection.
 
@@ -184,7 +216,7 @@ npm run examples:debug:debug
 
 ---
 
-### 3. Comprehensive Examples (`basic-test.test.ts`)
+### 4. Comprehensive Examples (`basic-test.test.ts`)
 
 **Purpose**: Complete showcase of framework capabilities.
 
@@ -206,7 +238,7 @@ npm run examples:basic
 
 ---
 
-### 4. Runtime Mode Detection (`runtime-mode.test.ts`)
+### 5. Runtime Mode Detection (`runtime-mode.test.ts`)
 
 **Purpose**: Demonstrates how to detect and handle different runtime modes.
 
@@ -231,7 +263,7 @@ npm test examples/runtime-mode.test.ts  # Run individually
 
 ---
 
-### 5. Runtime Mode Detection - Decorator (`runtime-mode-decorator.test.ts`)
+### 6. Runtime Mode Detection - Decorator (`runtime-mode-decorator.test.ts`)
 
 **Purpose**: Same as above but using the decorator approach.
 

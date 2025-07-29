@@ -8,6 +8,7 @@ A comprehensive testing framework for Camunda process automation in Node.js/Type
 
 - 🚀 **Easy Setup**: Simple decorator-based or function-based test configuration
 - 🐳 **Container Management**: Automatic Camunda/Zeebe container lifecycle management using TestContainers
+- 🧹 **Automatic Cleanup**: Smart resource cleanup with auto-deletion in REMOTE mode
 - 🔍 **Rich Assertions**: Fluent API for verifying process execution, user tasks, and decisions
 - 🎭 **Job Worker Mocking**: Powerful mocking capabilities for service tasks
 - 🔧 **gRPC Worker Support**: Test external workers connecting via Zeebe gRPC API
@@ -84,12 +85,12 @@ import {
 describe('Order Process', () => {
   const setup = setupCamundaProcessTest();
 
-  test('should complete order successfully', async () => {
-    const client = setup.getClient().getCamundaRestClient();
+  test('should complete order process', async () => {
+    const client = setup.getClient();
     const context = setup.getContext();
-
+    
     // Deploy process
-    await context.deployProcess('./processes/order-process.bpmn');
+    await context.deployResources(['./processes/order-process.bpmn']);
 
     // Mock job workers
     await context.mockJobWorker('collect-money')
@@ -132,7 +133,7 @@ class MyProcessTest {
 
   async testOrderProcess() {
     // Deploy process
-    await this.context.deployProcess('./processes/order-process.bpmn');
+    await this.context.deployResources(['./processes/order-process.bpmn']);
 
     // Mock job workers
     await this.context.mockJobWorker('collect-money')
@@ -582,13 +583,30 @@ CAMUNDA_FLUSH_PROCESSES=true npm test
 
 ### Process Deployment
 
-```typescript
-// Deploy BPMN process
-await context.deployProcess('./processes/my-process.bpmn');
+#### Modern Resource Deployment (Recommended)
 
-// Deploy DMN decision
-await context.deployDecision('./decisions/approval.dmn');
+Use `deployResources()` for deploying multiple resources with automatic cleanup support:
+
+```typescript
+// Deploy single resource
+await context.deployResources(['./processes/my-process.bpmn']);
+
+// Deploy multiple resources at once
+await context.deployResources([
+  './processes/order-process.bpmn',
+  './decisions/approval.dmn',
+  './forms/order-form.form'
+]);
+
+// Deploy with automatic cleanup in REMOTE mode
+// Resources will be automatically deleted after the test completes
+await context.deployResources(
+  ['./processes/my-process.bpmn'],
+  { autoDelete: true }
+);
 ```
+
+**Auto-Delete Feature**: When `autoDelete: true` is specified, deployed resources are automatically tracked and deleted after each test.
 
 ### Process Instance Creation
 
@@ -601,6 +619,33 @@ const processInstance = await camunda.createProcessInstance({
   variables: { input: 'test-data' }
 });
 ```
+
+### Resource Cleanup & Runtime Modes
+
+The framework operates in two modes with different cleanup behaviors:
+
+#### MANAGED Mode (Docker Containers)
+- **Default mode** using TestContainers
+- **Automatic container recycling** between test files
+- **No manual cleanup needed** - fresh environment for each test file
+- **Recommended for development** and CI/CD pipelines
+
+#### REMOTE Mode (SaaS/Camunda 8 Run/Self-managed)
+- **Connects to existing** Camunda instance
+- **Manual cleanup required** to prevent resource accumulation
+- **Use `autoDelete: true`** for automatic resource cleanup
+- **Recommended for integration testing** against live environments
+
+```typescript
+// Auto-cleanup example 
+await context.deployResources(
+  ['./processes/test-process.bpmn'],
+  { autoDelete: true } // Automatically deleted after this test
+);
+```
+
+**Best Practices:**
+- Use `autoDelete: true` when testing against REMOTE environments
 
 ### Job Worker Mocking
 
@@ -640,7 +685,7 @@ test('should process jobs with external gRPC worker', async () => {
   const context = setup.getContext();
 
   // Deploy process with service task
-  await context.deployProcess('./processes/worker-process.bpmn');
+  await context.deployResources(['./processes/worker-process.bpmn']);
 
   // Create external gRPC worker
   const grpcClient = client.getZeebeGrpcApiClient();
@@ -800,7 +845,7 @@ test('should complete timer-based process', async () => {
   const context = setup.getContext();
 
   // Deploy process with timer event
-  await context.deployProcess('./processes/timer-process.bpmn');
+  await context.deployResources(['./processes/timer-process.bpmn']);
 
   // Mock service task after timer
   await context.mockJobWorker('after-timer')
@@ -976,6 +1021,49 @@ npm test examples/
 
 ## Testing Patterns
 
+### Resource Cleanup in REMOTE Mode
+
+When testing against shared environments (SaaS, C8Run, etc.), use auto-cleanup to prevent resource accumulation:
+
+```typescript
+describe('Payment Process Tests', () => {
+  const setup = setupCamundaProcessTest();
+
+  test('should handle successful payment in REMOTE environment', async () => {
+    const context = setup.getContext();
+    
+    // Deploy with automatic cleanup
+    await context.deployResources([
+      './processes/payment-process.bpmn',
+      './decisions/credit-check.dmn'
+    ], { 
+      autoDelete: true // Resources deleted automatically after test
+    });
+
+    // Test logic here...
+    // Resources will be automatically cleaned up in afterEach()
+  });
+
+  test('should handle multiple resource types', async () => {
+    const context = setup.getContext();
+    
+    // Check runtime mode for conditional cleanup
+    const mode = context.getRuntimeMode();
+    const shouldCleanup = mode === 'REMOTE';
+    
+    await context.deployResources([
+      './processes/order-process.bpmn',
+      './forms/customer-form.form',
+      './decisions/approval.dmn'
+    ], { 
+      autoDelete: shouldCleanup
+    });
+
+    // Test implementation...
+  });
+});
+```
+
 ### Integration Testing
 
 ```typescript
@@ -1115,6 +1203,40 @@ DEBUG=camunda:test:logs npm test
 - **`CamundaProcessTestContext`**: Test context and utilities
 - **`CamundaClock`**: Clock management for time-based testing
 - **`JobWorkerMock`**: Job worker mocking utilities
+
+### CamundaProcessTestContext Methods
+
+#### Resource Deployment
+- **`deployResources(paths, options?)`**: Deploy multiple resources with optional auto-cleanup
+  - `paths`: Array of file paths to BPMN, DMN, or Form files
+  - `options.autoDelete`: Boolean - automatically delete resources after test (REMOTE mode only)
+- **`deployProcess(path, processId?)`**: Deploy single BPMN process (deprecated)
+- **`deployDecision(path)`**: Deploy single DMN decision (deprecated)
+
+#### Process Instance Management
+- **`createProcessInstance(request)`**: Create and start process instance with automatic tracking
+  - Instances are automatically cancelled in REMOTE mode during test cleanup
+- **`createProcessInstanceWithResult(request)`**: Create process instance and await completion
+  - Instances are automatically cancelled in REMOTE mode if still running during cleanup
+
+#### Runtime Information
+- **`getRuntimeMode()`**: Get current runtime mode ('MANAGED' | 'REMOTE')
+- **`getClient()`**: Get Camunda 8 client instance
+- **`getGatewayAddress()`**: Get Zeebe gateway address
+- **`getConnectorsAddress()`**: Get connectors runtime address
+
+#### Job Worker Mocking
+- **`mockJobWorker(jobType)`**: Create a mock job worker for the specified job type
+
+#### Time Control
+- **`increaseTime(duration)`**: Advance Zeebe's internal clock
+- **`getCurrentTime()`**: Get current test time
+- **`resetTime()`**: Reset time to system time
+
+#### Test Utilities
+- **`waitUntil(condition, options?)`**: Wait for a condition with polling
+- **`resetTestState()`**: Reset test state between test methods
+- **`cleanupTestData()`**: Clean up test data after test methods
 
 ### Runtime Mode Detection
 

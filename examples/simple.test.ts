@@ -14,8 +14,13 @@ describe('Simple Camunda Process Test', () => {
 	test('should deploy and run a simple process', async () => {
 		const client = setup.getClient()
 		const context = setup.getContext()
-		// Deploy process
-		await context.deployProcess('./examples/resources/simple-process.bpmn')
+
+		// Deploy process using new deployResources method with tracking
+		// When autoDelete: true is set, resources are automatically cleaned up in REMOTE mode
+		await context.deployResources(
+			['./examples/resources/simple-process.bpmn'],
+			{ autoDelete: true }
+		)
 
 		// Start process instance
 		const camunda = client.getCamundaRestClient()
