@@ -68,7 +68,9 @@ export class CamundaProcessTestRuntime {
 
 	async start(): Promise<void> {
 		log('🚀 Starting Camunda runtime...')
-		log('Configuration: %O', this.config)
+
+		// Log initial relevant configuration
+		this.logInitialConfiguration()
 
 		if (this.config.runtimeMode === 'REMOTE') {
 			log('📡 Using REMOTE mode')
@@ -78,6 +80,8 @@ export class CamundaProcessTestRuntime {
 			await this.startManagedMode()
 		}
 
+		// Log final runtime configuration with calculated values
+		this.logFinalRuntimeConfiguration()
 		log('✅ Camunda runtime started successfully')
 	}
 
@@ -719,5 +723,122 @@ export class CamundaProcessTestRuntime {
 		}
 
 		return new Camunda8(config)
+	}
+
+	/**
+	 * Logs the initial configuration showing only relevant properties for the current runtime mode.
+	 */
+	private logInitialConfiguration(): void {
+		log('📋 Initial Configuration:')
+		const relevantConfig = this.getRelevantConfiguration()
+
+		Object.entries(relevantConfig).forEach(([key, value]) => {
+			const sanitizedValue = this.sanitizeConfigValue(key, value)
+			log('  %s: %s', key, sanitizedValue)
+		})
+	}
+
+	/**
+	 * Logs the final runtime configuration including calculated addresses and ports.
+	 */
+	private logFinalRuntimeConfiguration(): void {
+		log('🔧 Final Runtime Configuration:')
+		const runtimeConfig = this.getFinalRuntimeConfiguration()
+
+		Object.entries(runtimeConfig).forEach(([key, value]) => {
+			log('  %s: %s', key, value || '[NOT AVAILABLE]')
+		})
+	}
+
+	/**
+	 * Gets configuration properties relevant to the current runtime mode.
+	 */
+	private getRelevantConfiguration(): Record<string, string> {
+		const properties = new ContainerRuntimePropertiesUtil(this.config)
+		const relevantConfig: Record<string, string> = {
+			runtimeMode: this.config.runtimeMode || 'MANAGED',
+		}
+
+		if (this.config.runtimeMode === 'MANAGED') {
+			// Docker-related properties for MANAGED mode
+			relevantConfig.camundaDockerImageName =
+				this.config.camundaDockerImageName || ''
+			relevantConfig.camundaDockerImageVersion =
+				this.config.camundaDockerImageVersion || ''
+			relevantConfig.connectorsDockerImageName =
+				this.config.connectorsDockerImageName || ''
+			relevantConfig.connectorsDockerImageVersion =
+				this.config.connectorsDockerImageVersion || ''
+			relevantConfig.zeebeClientLogLevel = properties.zeebeClientLogLevel || ''
+			relevantConfig.flushProcesses = properties.flushProcesses || ''
+		} else if (this.config.runtimeMode === 'REMOTE') {
+			// Remote connection properties for REMOTE mode
+			relevantConfig.zeebeClientId = this.config.zeebeClientId || ''
+			relevantConfig.zeebeClientSecret = this.config.zeebeClientSecret || ''
+			relevantConfig.camundaOauthUrl = this.config.camundaOauthUrl || ''
+			relevantConfig.zeebeRestAddress = this.config.zeebeRestAddress || ''
+			relevantConfig.zeebeGrpcAddress = this.config.zeebeGrpcAddress || ''
+			relevantConfig.zeebeTokenAudience = this.config.zeebeTokenAudience || ''
+			relevantConfig.camundaAuthStrategy = this.config.camundaAuthStrategy || ''
+			relevantConfig.zeebeClientLogLevel = properties.zeebeClientLogLevel || ''
+			relevantConfig.flushProcesses = properties.flushProcesses || ''
+			relevantConfig.camundaMonitoringApiAddress =
+				this.config.camundaMonitoringApiAddress || ''
+			relevantConfig.connectorsRestApiAddress =
+				this.config.connectorsRestApiAddress || ''
+		}
+
+		return relevantConfig
+	}
+
+	/**
+	 * Gets the final runtime configuration including calculated addresses and runtime values.
+	 */
+	private getFinalRuntimeConfiguration(): Record<string, string> {
+		const finalConfig: Record<string, string> = {}
+
+		if (this.config.runtimeMode === 'MANAGED') {
+			// Calculated runtime values for MANAGED mode
+			finalConfig.gatewayAddress = this.gatewayAddress || '[NOT STARTED]'
+			finalConfig.grpcAddress = this.grpcAddress || '[NOT STARTED]'
+
+			if (this.container) {
+				const managementPort = this.container.getMappedPort(9600)
+				finalConfig.monitoringApiAddress = `http://localhost:${managementPort}`
+			} else {
+				finalConfig.monitoringApiAddress = '[CONTAINER NOT STARTED]'
+			}
+
+			finalConfig.connectorsApiAddress =
+				this.getConnectorsAddress() || '[CONNECTORS DISABLED]'
+
+			if (this.container) {
+				finalConfig.containerID = this.container.getId()
+			}
+		} else if (this.config.runtimeMode === 'REMOTE') {
+			// Final calculated values for REMOTE mode
+			finalConfig.gatewayAddress = this.gatewayAddress || '[NOT CONFIGURED]'
+			finalConfig.grpcAddress = this.grpcAddress || '[NOT CONFIGURED]'
+			finalConfig.monitoringApiAddress =
+				this.remoteMonitoringApiAddress || '[NOT CONFIGURED]'
+			finalConfig.connectorsApiAddress =
+				this.remoteConnectorsApiAddress || '[NOT CONFIGURED]'
+			finalConfig.authStrategy = detectAuthStrategy(this.config)
+		}
+
+		return finalConfig
+	}
+
+	/**
+	 * Sanitizes configuration values for logging, hiding sensitive information.
+	 */
+	private sanitizeConfigValue(key: string, value: string): string {
+		const sensitiveKeys = ['zeebeClientSecret', 'zeebeClientId']
+
+		if (sensitiveKeys.includes(key) && value) {
+			return '[CONFIGURED]'
+		}
+
+		return value || '[NOT SET]'
 	}
 }
