@@ -1,4 +1,8 @@
-import type { CamundaRestApiTypes } from '@camunda8/sdk'
+import type {
+	CamundaRestApiTypes,
+	CamundaRestClient,
+	HTTPError,
+} from '@camunda8/sdk'
 import { Camunda8, Dto, PollingOperation } from '@camunda8/sdk'
 import Debug from 'debug'
 
@@ -36,68 +40,14 @@ export class CamundaProcessTestContext {
 	private trackedResourceKeys: Set<string> = new Set()
 	private trackedResources: TrackedResource[] = []
 	private trackedProcessInstances: Set<string> = new Set()
-	private trackedGrpcWorkers: Array<{ close(): void }> = []
-	private trackedJobWorkers: Array<{ stop(): void }> = []
-	private trackedZeebeGrpcClients: Array<{ close(): Promise<null> }> = []
-	private isInSetup: boolean = true
+	private camunda: CamundaRestClient
 
 	constructor(
 		private runtime: CamundaProcessTestRuntime,
 		protected client: Camunda8
 	) {
 		this.clock = new CamundaClock(runtime)
-		this.setupWorkerCreationHooks()
-		// Mark setup as complete - only track clients created after this point
-		this.isInSetup = false
-	}
-
-	/**
-	 * Sets up hooks to automatically register workers created via the client.
-	 */
-	private setupWorkerCreationHooks(): void {
-		debugWorker('🔧 Setting up worker creation hooks...')
-
-		// Hook ZeebeGrpcClient creation
-		const originalGetZeebeGrpcApiClient =
-			this.client.getZeebeGrpcApiClient.bind(this.client)
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		;(this.client as any).getZeebeGrpcApiClient = (...args: any[]) => {
-			debugWorker('🎣 Intercepted ZeebeGrpcClient creation')
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			const zeebeClient = originalGetZeebeGrpcApiClient.apply(
-				this.client,
-				// eslint-disable-next-line @typescript-eslint/no-explicit-any
-				args as any
-			)
-			this.registerZeebeGrpcClient(zeebeClient)
-			return zeebeClient
-		}
-
-		// Hook gRPC worker creation
-		const grpcClient = this.client.getZeebeGrpcApiClient()
-		const originalCreateWorker = grpcClient.createWorker.bind(grpcClient)
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		;(grpcClient as any).createWorker = (...args: any[]) => {
-			debugWorker('🎣 Intercepted gRPC worker creation')
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			const worker = originalCreateWorker.apply(grpcClient, args as any)
-			this.registerGrpcWorker(worker)
-			return worker
-		}
-
-		// Hook REST job worker creation
-		const restClient = this.client.getCamundaRestClient()
-		const originalCreateJobWorker = restClient.createJobWorker.bind(restClient)
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		;(restClient as any).createJobWorker = (...args: any[]) => {
-			debugWorker('🎣 Intercepted job worker creation')
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			const worker = originalCreateJobWorker.apply(restClient, args as any)
-			this.registerJobWorker(worker)
-			return worker
-		}
-
-		debugWorker('✅ Worker creation hooks installed')
+		this.camunda = client.getCamundaRestClient({}, { cached: false })
 	}
 
 	/**
@@ -144,10 +94,9 @@ export class CamundaProcessTestContext {
 		debugDeploy('📋 Deploying resources: %o', resourcePaths)
 		debugDeploy('�️ Auto-delete enabled: %s', shouldAutoDelete)
 
-		const camunda = this.client.getCamundaRestClient()
 		debugDeploy('🚀 Sending deployment request...')
 
-		const response = await camunda.deployResourcesFromFiles(resourcePaths)
+		const response = await this.camunda.deployResourcesFromFiles(resourcePaths)
 
 		// Validate deployment results
 		this.validateDeploymentResponse(response, resourcePaths)
@@ -171,8 +120,7 @@ export class CamundaProcessTestContext {
 	async createProcessInstance<
 		T extends typeof Dto.LosslessDto | Record<string, unknown>,
 	>(request: CamundaRestApiTypes.CreateProcessInstanceRequest<T>) {
-		const camunda = this.client.getCamundaRestClient()
-		const response = await camunda.createProcessInstance(request)
+		const response = await this.camunda.createProcessInstance(request)
 
 		// Track process instance for cleanup
 		this.trackProcessInstance(response)
@@ -193,8 +141,7 @@ export class CamundaProcessTestContext {
 			unknown
 		>,
 	>(request: CamundaRestApiTypes.CreateProcessInstanceRequest<T>) {
-		const camunda = this.client.getCamundaRestClient()
-		const response = await camunda.createProcessInstanceWithResult(request)
+		const response = await this.camunda.createProcessInstanceWithResult(request)
 
 		// Track process instance for cleanup (in case it's still running)
 		this.trackProcessInstance(response)
@@ -388,48 +335,6 @@ export class CamundaProcessTestContext {
 	}
 
 	/**
-	 * Registers a gRPC worker for automatic cleanup.
-	 * Called automatically when workers are created via the test client.
-	 */
-	registerGrpcWorker(worker: { close(): void }): void {
-		this.trackedGrpcWorkers.push(worker)
-		debugWorker(
-			'📝 Registered gRPC worker for cleanup (total: %d)',
-			this.trackedGrpcWorkers.length
-		)
-	}
-
-	/**
-	 * Registers a job worker for automatic cleanup.
-	 * Called automatically when workers are created via the test client.
-	 */
-	registerJobWorker(worker: { stop(): void }): void {
-		this.trackedJobWorkers.push(worker)
-		debugWorker(
-			'📝 Registered job worker for cleanup (total: %d)',
-			this.trackedJobWorkers.length
-		)
-	}
-
-	/**
-	 * Registers a ZeebeGrpcClient for automatic cleanup.
-	 * Called automatically when clients are created via the test client.
-	 */
-	registerZeebeGrpcClient(client: { close(): Promise<null> }): void {
-		// Only track clients created during test execution, not during setup
-		if (this.isInSetup) {
-			debugWorker('🔧 Skipping registration of setup ZeebeGrpcClient')
-			return
-		}
-
-		this.trackedZeebeGrpcClients.push(client)
-		debugWorker(
-			'📝 Registered ZeebeGrpcClient for cleanup (total: %d)',
-			this.trackedZeebeGrpcClients.length
-		)
-	}
-
-	/**
 	 * Increases the current time by the specified duration.
 	 * This affects timers and scheduled tasks in processes.
 	 *
@@ -507,119 +412,33 @@ export class CamundaProcessTestContext {
 
 	/**
 	 * Resets test state between test methods.
+	 * This is called in the beforeEach jest lifecycle, so between each test in a file.
 	 */
 	async resetTestState(): Promise<void> {
 		debug('Resetting test state')
 		this.resetTime()
-
-		// Stop all job workers
-		for (const worker of this.jobWorkers) {
-			worker.stop()
-		}
-		this.jobWorkers = []
-
-		// Stop tracked workers
-		this.stopTrackedWorkers()
-
-		// Close tracked ZeebeGrpcClients
-		await this.stopTrackedZeebeGrpcClients()
-
-		// Clear resource tracking (but don't delete resources - that's for cleanupTestData)
-		this.trackedResources = []
-		this.trackedResourceKeys.clear()
-		this.trackedProcessInstances.clear()
 	}
 
 	/**
 	 * Cleans up test data after each test method.
+	 * This is called in the Jest afterEach lifecycle hook, so after each test in a test file.
 	 */
 	async cleanupTestData(): Promise<void> {
 		debug('Cleaning up test data')
 
-		// Stop job workers first
-		for (const worker of this.jobWorkers) {
-			worker.stop()
-		}
-
-		// Stop tracked workers
-		this.stopTrackedWorkers()
-
-		// Close tracked ZeebeGrpcClients
-		await this.stopTrackedZeebeGrpcClients()
+		// Close any gRPC clients created in a test, and stop any external workers created
+		this.client.closeAllClients()
 
 		// Cancel tracked process instances before deleting resources
 		await this.cleanupTrackedProcessInstances()
 
 		// Clean up tracked resources
 		await this.cleanupTrackedResources()
-	}
 
-	private stopTrackedWorkers(): void {
-		debugCleanup(
-			'🔄 Stopping %d tracked gRPC workers...',
-			this.trackedGrpcWorkers.length
-		)
-		for (const worker of this.trackedGrpcWorkers) {
-			try {
-				worker.close()
-				debugCleanup('✅ Closed gRPC worker')
-			} catch (error) {
-				debugCleanup('❌ Error closing gRPC worker: %s', error)
-			}
-		}
-		this.trackedGrpcWorkers = []
-
-		debugCleanup(
-			'🔄 Stopping %d tracked job workers...',
-			this.trackedJobWorkers.length
-		)
-		for (const worker of this.trackedJobWorkers) {
-			try {
-				worker.stop()
-				debugCleanup('✅ Stopped job worker')
-			} catch (error) {
-				debugCleanup('❌ Error stopping job worker: %s', error)
-			}
-		}
-		this.trackedJobWorkers = []
-	}
-
-	private async stopTrackedZeebeGrpcClients(): Promise<void> {
-		if (this.trackedZeebeGrpcClients.length === 0) {
-			debugCleanup('No tracked ZeebeGrpcClients to close')
-			return
-		}
-
-		debugCleanup(
-			'🔄 Closing %d tracked ZeebeGrpcClients...',
-			this.trackedZeebeGrpcClients.length
-		)
-
-		const closeErrors: string[] = []
-
-		for (const client of this.trackedZeebeGrpcClients) {
-			try {
-				debugCleanup('🔒 Closing ZeebeGrpcClient...')
-				await client.close()
-				debugCleanup('✅ Closed ZeebeGrpcClient')
-			} catch (error) {
-				const errorMessage = `Failed to close ZeebeGrpcClient: ${error}`
-				closeErrors.push(errorMessage)
-				debugCleanup('❌ %s', errorMessage)
-			}
-		}
-
-		// Clear tracking array
-		this.trackedZeebeGrpcClients = []
-
-		debugCleanup(
-			'🔄 ZeebeGrpcClient closure completed. %d errors occurred.',
-			closeErrors.length
-		)
-
-		if (closeErrors.length > 0) {
-			logCleanup('❌ ZeebeGrpcClient closure errors: %o', closeErrors)
-		}
+		// Clear resource tracking
+		this.trackedResources = []
+		this.trackedResourceKeys.clear()
+		this.trackedProcessInstances.clear()
 	}
 
 	private async cleanupTrackedProcessInstances(): Promise<void> {
@@ -633,20 +452,22 @@ export class CamundaProcessTestContext {
 			this.trackedProcessInstances.size
 		)
 
-		const camunda = this.client.getCamundaRestClient()
 		const cancelErrors: string[] = []
 
 		for (const processInstanceKey of this.trackedProcessInstances) {
 			try {
 				debugCleanup('⏹️ Cancelling process instance: %s', processInstanceKey)
-				await camunda.cancelProcessInstance({
+				await this.camunda.cancelProcessInstance({
 					processInstanceKey,
 				})
 				debugCleanup('✅ Cancelled process instance: %s', processInstanceKey)
 			} catch (error) {
-				const errorMessage = `Failed to cancel process instance ${processInstanceKey}: ${error}`
-				cancelErrors.push(errorMessage)
-				debugCleanup('❌ %s', errorMessage)
+				// Process instances that have already completed will throw 404 - this is expected behaviour
+				if (!(error as HTTPError).message?.includes('404')) {
+					const errorMessage = `Failed to cancel process instance ${processInstanceKey}: ${error}`
+					cancelErrors.push(errorMessage)
+					debugCleanup('❌ %s', errorMessage)
+				}
 			}
 		}
 
@@ -674,7 +495,6 @@ export class CamundaProcessTestContext {
 			this.trackedResources.length
 		)
 
-		const camunda = this.client.getCamundaRestClient()
 		const cleanupErrors: string[] = []
 
 		for (const resource of this.trackedResources) {
@@ -685,7 +505,7 @@ export class CamundaProcessTestContext {
 				// Until all process instances are cancelled, we cannot delete the process definition
 				await PollingOperation({
 					operation: () =>
-						camunda
+						this.camunda
 							.deleteResource({
 								resourceKey: resource.key,
 							})

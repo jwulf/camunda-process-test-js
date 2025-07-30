@@ -1,10 +1,4 @@
-import { Camunda8 } from '@camunda8/sdk'
-// Import SDK types
-import type {
-	GetDecisionInstanceResponse as SDKDecisionInstance,
-	ProcessInstanceDetails as SDKProcessInstanceDetails,
-	UserTask as SDKUserTask,
-} from '@camunda8/sdk/dist/c8/lib/C8Dto'
+import { Camunda8, type CamundaRestApiTypes } from '@camunda8/sdk'
 
 export interface ProcessInstanceEvent {
 	processInstanceKey: string
@@ -17,9 +11,9 @@ export interface ProcessInstanceResult extends ProcessInstanceEvent {
 }
 
 // Re-export SDK types with our naming
-export type UserTask = SDKUserTask
-export type ProcessInstance = SDKProcessInstanceDetails
-export type DecisionInstance = SDKDecisionInstance
+export type UserTask = CamundaRestApiTypes.UserTask
+export type ProcessInstance = CamundaRestApiTypes.ProcessInstanceDetails
+export type DecisionInstance = CamundaRestApiTypes.GetDecisionInstanceResponse
 
 // Legacy interface for backwards compatibility (deprecated)
 /** @deprecated Use DecisionInstance from SDK instead */

@@ -84,16 +84,32 @@ import {
 } from '@camunda8/process-test';
 
 describe('Order Process', () => {
+  /** 
+   * setupCamundaProcessTest() should be called outside test blocks, and before any beforeAll or afterAll blocks in your test. 
+   * It will install beforeAll, beforeEach, afterAll, and afterEach hooks to manage test state
+   * between tests, including setting up and recycling any containers.
+   */
   const setup = setupCamundaProcessTest();
 
   test('should complete order process', async () => {
-    const client = setup.getClient();
+    /**
+     * getContext() returns a CamundaTestContext object. This has methods for deploying resources
+     * and starting process instances that track the resources and dispose of them after each test. 
+     * This is the best practice for test isolation.
+     */
     const context = setup.getContext();
     
     // Deploy process
     await context.deployResources(['./processes/order-process.bpmn']);
 
-    // Mock job workers
+    /** 
+    * The Mock Job Worker will complete only one job. Awaiting this means that the test will continue only
+    * when a job has been completed.
+    * 
+    * It is important to run tests using either `--runInBand` or `maxWorkers: 1`.
+    * Both worker mocks and external workers are managed by the framework, and after a test runs, all running
+    * workers are stopped. This will cause unpredictable behaviour if two tests are running at the same time.
+    */
     await context.mockJobWorker('collect-money')
       .thenComplete({ paid: true });
     
@@ -101,7 +117,7 @@ describe('Order Process', () => {
       .thenComplete({ tracking: 'TR123456' });
 
     // Start process instance
-    const processInstance = await client.createProcessInstance({
+    const processInstance = await context.createProcessInstance({
       processDefinitionId: 'order-process',
       variables: { orderId: 'order-123', amount: 99.99 }
     });
@@ -144,8 +160,7 @@ class MyProcessTest {
       .thenComplete({ tracking: 'TR123456' });
 
     // Start process instance
-    const camunda = this.client.getCamundaRestClient();
-    const processInstance = await camunda.createProcessInstance({
+    const processInstance = await this.context.createProcessInstance({
       processDefinitionId: 'order-process',
       variables: { orderId: 'order-123', amount: 99.99 }
     });
@@ -584,9 +599,9 @@ CAMUNDA_FLUSH_PROCESSES=true npm test
 
 ### Process Deployment
 
-#### Modern Resource Deployment (Recommended)
+#### Managed Resource Deployment (Recommended)
 
-Use `deployResources()` for deploying multiple resources with automatic cleanup support:
+Use `deployResources()` for deploying resources with optional automatic cleanup support:
 
 ```typescript
 // Deploy single resource
@@ -599,7 +614,7 @@ await context.deployResources([
   './forms/order-form.form'
 ]);
 
-// Deploy with automatic cleanup in REMOTE mode
+// Deploy with automatic cleanup 
 // Resources will be automatically deleted after the test completes
 await context.deployResources(
   ['./processes/my-process.bpmn'],
@@ -609,13 +624,14 @@ await context.deployResources(
 
 **Auto-Delete Feature**: When `autoDelete: true` is specified, deployed resources are automatically tracked and deleted after each test.
 
-### Process Instance Creation
+### Managed Process Instance Creation
+
+Using the framework's context object to create process instances means that any active process instance created in a test is cancelled in the `afterEach` lifecycle, ensuring test isolation.
 
 ```typescript
-const client = setup.getClient();
 const camunda = client.getCamundaRestClient();
 
-const processInstance = await camunda.createProcessInstance({
+const processInstance = await context.createProcessInstance({
   processDefinitionId: 'my-process',
   variables: { input: 'test-data' }
 });
@@ -627,8 +643,8 @@ The framework operates in two modes with different cleanup behaviors:
 
 #### MANAGED Mode (Docker Containers)
 - **Default mode** using TestContainers
-- **Automatic container recycling** between test files
-- **No manual cleanup needed** - fresh environment for each test file
+- **Automatic container recycling** between test files (not between tests in a file)
+- **No manual cleanup needed between test files** - fresh environment for each test file
 - **Recommended for development** and CI/CD pipelines
 
 #### REMOTE Mode (SaaS/Camunda 8 Run/Self-managed)
@@ -676,19 +692,24 @@ await context.mockJobWorker('complex-task')
   });
 ```
 
-### gRPC Worker Testing
+### Worker Testing
 
-For testing external workers that connect via gRPC, use the framework's gRPC client:
+For testing external workers, use the framework's client:
 
 ```typescript
 test('should process jobs with external gRPC worker', async () => {
+  /**
+   * getClient() returns a managed instance of the Camunda8 class configured for connection to
+   * the test engine. This client is also managed to stop any polling workers when the test ends.
+   * This means that you do not need to manually manage closing workers in your tests.
+   */
   const client = setup.getClient();
   const context = setup.getContext();
 
   // Deploy process with service task
   await context.deployResources(['./processes/worker-process.bpmn']);
 
-  // Create external gRPC worker - automatically managed by framework
+  // Create external gRPC worker - closing the worker on test completion is automatically managed by framework
   const grpcClient = client.getZeebeGrpcApiClient();
   grpcClient.createWorker({
     taskType: 'external-task',
@@ -703,8 +724,7 @@ test('should process jobs with external gRPC worker', async () => {
   });
 
   // Start process instance
-  const camunda = client.getCamundaRestClient();
-  const processInstance = await camunda.createProcessInstance({
+  const processInstance = await context.createProcessInstance({
     processDefinitionId: 'worker-process',
     variables: { input: 'test-data' }
   });
@@ -718,7 +738,6 @@ test('should process jobs with external gRPC worker', async () => {
 
   // Worker is automatically closed by the framework during test cleanup
 });
-});
 ```
 
 #### Automatic Worker Lifecycle Management
@@ -726,13 +745,14 @@ test('should process jobs with external gRPC worker', async () => {
 The framework automatically manages the lifecycle of both gRPC and REST job workers:
 
 **Automatic Registration & Cleanup:**
-- Workers created via `client.getZeebeGrpcApiClient().createWorker()` are automatically registered
-- Workers created via `client.getCamundaRestClient().createJobWorker()` are automatically registered  
-- All registered workers are automatically closed/stopped during test cleanup
+- Workers created via `client.getZeebeGrpcApiClient().createWorker()` are automatically stopped after a test
+- Workers created via `client.getCamundaRestClient().createJobWorker()` are automatically stopped after a test  
+- All workers are automatically closed/stopped during test cleanup
 - No need for manual `worker.close()` or `worker.stop()` calls
 - No need for try/finally blocks around worker creation
+- It is important to run tests using jest's `--runInBand` option or `maxWorkers: 1` configuration option. *All* workers are stopped at the end of a test.
 
-**Before (Manual Lifecycle Management):**
+**Worker testing pattern without Lifecycle Management:**
 ```typescript
 const worker = grpcClient.createWorker(config);
 try {
@@ -742,22 +762,11 @@ try {
 }
 ```
 
-**After (Automatic Lifecycle Management):**
+**Tests with our Automatic Lifecycle Management:**
 ```typescript
 grpcClient.createWorker(config);
 // test logic - worker automatically cleaned up by framework!
 ```
-
-**Debug Worker Lifecycle:**
-Monitor automatic worker management with debug logging:
-```bash
-DEBUG=camunda:test:worker,camunda:test:cleanup npm test
-```
-
-This will show:
-- `🎣 Intercepted gRPC worker creation` - Worker creation detected
-- `📝 Registered gRPC worker for cleanup` - Worker registered for cleanup
-- `✅ Closed gRPC worker` - Worker automatically closed
 
 #### gRPC Configuration
 
@@ -879,7 +888,6 @@ const currentTime = context.getCurrentTime();
 
 ```typescript
 test('should complete timer-based process', async () => {
-  const client = setup.getClient();
   const context = setup.getContext();
 
   // Deploy process with timer event
@@ -890,8 +898,7 @@ test('should complete timer-based process', async () => {
     .thenComplete({ timerCompleted: true });
 
   // Start process
-  const camunda = client.getCamundaRestClient();
-  const processInstance = await camunda.createProcessInstance({
+  const processInstance = await context.createProcessInstance({
     processDefinitionId: 'timer-process',
     variables: {}
   });

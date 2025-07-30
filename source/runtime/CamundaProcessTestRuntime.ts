@@ -166,7 +166,11 @@ export class CamundaProcessTestRuntime {
 				(process.env.CAMUNDA_AUTH_STRATEGY as 'NONE') || 'NONE'
 		}
 
-		const client = new Camunda8(clientConfig)
+		// We default to *not cached* to cause the creation of a new ZeebeGrpcClient when
+		// users get one in tests. This is because we manage the lifecycle of the Api clients
+		// with client.closeAllClients() in afterEach. This stops all running workers after a test. But the
+		// ZeebeGrpcClient is not reusable after being closed, so we need to always create a new one.
+		const client = new Camunda8(clientConfig, { defaultCached: false })
 
 		log('✅ Camunda client created successfully')
 		return client

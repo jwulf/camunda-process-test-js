@@ -99,7 +99,8 @@ export class JobWorkerMock {
 
 		let handlerIndex = 0
 
-		const camunda = this.client.getCamundaRestClient()
+		// Use a singleton client for worker mocks
+		const camunda = this.client.getCamundaRestClient({}, { cached: true })
 		this.worker = camunda.createJobWorker({
 			type: this.jobType,
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any
