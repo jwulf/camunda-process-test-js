@@ -1,3 +1,10 @@
+## [1.12.1](https://github.com/jwulf/camunda-process-test-js/compare/v1.12.0...v1.12.1) (2025-07-31)
+
+
+### Bug Fixes
+
+* manage worker lifecycle correctly. fixes [#35](https://github.com/jwulf/camunda-process-test-js/issues/35) ([69c4be1](https://github.com/jwulf/camunda-process-test-js/commit/69c4be18a9e3e842592185d8cf1d079f61ddbd34))
+
 # [1.12.0](https://github.com/jwulf/camunda-process-test-js/compare/v1.11.1...v1.12.0) (2025-07-29)
 
 
