@@ -33,7 +33,11 @@ export class CamundaProcessTestExtension {
 		await this.runtime.start()
 
 		// Create client
-		debug('🔌 Creating Zeebe client...')
+		debug('🔌 Creating Camunda8 client...')
+		/**
+		 * This Camunda8 has caching disabled by default. This means that each call to create a
+		 * specific ApiClient will return a new instance.
+		 */
 		this.client = this.runtime.createClient()
 
 		// Create context
